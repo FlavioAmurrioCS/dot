@@ -3,3 +3,5 @@
 # Please adapt and uncomment the following lines:
 	name = FlavioAmurrioCS
 	email = FlavioAmurrioCS@gmail.com
+[status]
+	showUntrackedFiles = no
