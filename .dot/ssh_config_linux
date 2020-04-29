@@ -1,0 +1,23 @@
+Host *
+  Compression=yes
+  ControlPersist yes
+  ForwardAgent yes
+  GSSAPIAuthentication yes
+  GSSAPIDelegateCredentials yes
+  KeepAlive yes
+  ServerAliveCountMax 6
+  ServerAliveInterval 15
+  StrictHostKeyChecking no
+  UserKnownHostsFile /dev/null
+  ControlPath /tmp/%r@%h:%p
+  ControlMaster auto
+
+Match originalhost ubuntu exec "ifconfig | grep -q '192.168'"
+  HostName 192.168.86.25
+
+Host ubuntu
+  HostName 25.124.147.55
+
+Host zeus
+  User famurrio
+  HostName zeus.vse.gmu.edu
