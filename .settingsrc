@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
