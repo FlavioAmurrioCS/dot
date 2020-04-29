@@ -1,4 +1,5 @@
 # dot
+https://www.atlassian.com/git/tutorials/dotfiles
 
 ```bash
 alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
