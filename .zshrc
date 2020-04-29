@@ -116,4 +116,5 @@ export VIRTUALENVWRAPPER_PYTHON=$(which python3)
 export PIPENV_VENV_IN_PROJECT=1
 [ -f /usr/local/bin/virtualenvwrapper_lazy.sh ] &&
      source /usr/local/bin/virtualenvwrapper_lazy.sh
+source "${HOME}/.settingsrc"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
