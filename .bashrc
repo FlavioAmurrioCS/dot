@@ -2,6 +2,7 @@
 # shellcheck source=/dev/null
 
 echo "~/.bashrc: bash settings"
+export BASH_SILENCE_DEPRECATION_WARNING=1
 
 # https://unix.stackexchange.com/questions/1288/preserve-bash-history-in-multiple-terminal-windows
 export HISTSIZE=9000
