@@ -1,4 +1,0 @@
-#!/usr/bin/env bash
-
-alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
-# git clone --bare git@github.com:FlavioAmurrioCS/dot.git "${HOME}/.cfg"
