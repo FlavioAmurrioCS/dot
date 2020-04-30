@@ -98,7 +98,7 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-echo "~/.bashrc: bash settings"
+echo "~/.zshrc: zsh settings"
 
 source() {
   if [ -z "$1" ]; then
