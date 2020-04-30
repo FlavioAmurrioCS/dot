@@ -11,6 +11,7 @@ Host *
   UserKnownHostsFile /dev/null
   ControlPath /tmp/%r@%h:%p
   ControlMaster auto
+  LogLevel FATAL
 
 Match originalhost ubuntu exec "ifconfig | grep -q '192.168'"
   HostName 192.168.86.25
