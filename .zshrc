@@ -98,23 +98,15 @@ source $ZSH/oh-my-zsh.sh
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-export APPLICATION_DIR="${HOME}/Applications"
-export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
-export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
-export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
-export PATH="${HOMEBREW_HOME}/bin:${PATH}"
-export PATH="${HOME}/.local/bin:${PATH}"
+echo "~/.bashrc: bash settings"
 
-export NVM_DIR="$HOME/.nvm"
-[ -s "${HOMEBREW_HOME}/opt/nvm/nvm.sh" ] &&
-    . "${HOMEBREW_HOME}/opt/nvm/nvm.sh"  # This loads nvm
-[ -s "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm" ] && 
-    . "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm"  # This loads nvm bash_completion
+source() {
+  if [ -z "$1" ]; then
+    builtin source "${HOME}/.zshrc"
+  else
+    builtin source "$@"
+  fi
+}
 
-export WORKON_HOME="${HOME}/.virtualenvs"
-export VIRTUALENVWRAPPER_PYTHON=$(which python3)
-export PIPENV_VENV_IN_PROJECT=1
-[ -f /usr/local/bin/virtualenvwrapper_lazy.sh ] &&
-     source /usr/local/bin/virtualenvwrapper_lazy.sh
-source "${HOME}/.settingsrc"
 [ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
+[ -f "${HOME}/.dot/dotrc" ] && source "${HOME}/.dot/dotrc"

@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+
+echo "~/.dot/dotrc: common settings"
+export PATH="$HOME/.local/bin:$PATH"
+
+export CLICOLOR=1
+export LSCOLORS=GxFxCxDxBxegedabagaced
+
+export WORKON_HOME="${HOME}/.virtualenvs"
+export VIRTUALENVWRAPPER_PYTHON=$(which python3 || which python)
+export PIPENV_VENV_IN_PROJECT=1
+
+alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
+
+
+
+
+
+
+
+[ -f "${HOME}/.local/bin/virtualenvwrapper_lazy.sh" ] &&
+     source "${HOME}/.local/bin/virtualenvwrapper_lazy.sh"
+
+################################################################################
+uname -s | grep -q Darwin && source "${HOME}/.dot/macrc"
+uname -s | grep -q Linux && source "${HOME}/.dot/linuxrc"
+[ -f "${HOME}/.dotrc" ] && source "${HOME}/.dotrc"
