@@ -10,10 +10,10 @@ export HISTFILESIZE=${HISTSIZE}
 export HISTCONTROL=ignorespace:ignoredups
 
 _bash_history_sync() {
-  builtin history -a        #1
-  HISTFILESIZE=${HISTSIZE}  #2
-  builtin history -c        #3
-  builtin history -r        #4
+  builtin history -a       #1
+  HISTFILESIZE=${HISTSIZE} #2
+  builtin history -c       #3
+  builtin history -r       #4
 }
 
 history() { #5
@@ -39,7 +39,7 @@ source() {
 }
 
 # export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \color{#fff}{.*}.∗/ (\1)/') \[\e[0m\]\$ "
-export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w/\[\e[34;1m\] \$ \033[0m"
+export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w/\[\e[34;1m\] \$ \[\033[0m\]"
 
 [ -f ~/.fzf.bash ] && source ~/.fzf.bash
 [ -f "${HOME}/.dot/dotrc" ] && source "${HOME}/.dot/dotrc"

@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
+# shellcheck source=/dev/null
 
 echo "~/.dot/linuxrc: linux settings"
 
 export PATH="${HOME}/.dot/linux_bin:${PATH}"
 
 command -v javac >/dev/null 2>&1 &&
-    export JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")")
+  JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")") &&
+  export JAVA_HOME
