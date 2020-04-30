@@ -14,3 +14,7 @@ else
     dot checkout
 fi;
 ```
+
+```bash
+python3 -m pip install -U pipenv virtualenvwrapper bpython pip autopep8 flake8-mypy --user
+```
