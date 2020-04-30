@@ -8,6 +8,8 @@ export LSCOLORS=GxFxCxDxBxegedabagaced
 
 export WORKON_HOME="${HOME}/.virtualenvs"
 export VIRTUALENVWRAPPER_PYTHON=$(which python3 || which python)
+export PYTHONUSERBASE="${HOME}/.local"
+# export PIP_INDEX_URL="http://www.example.com/my-packages/"
 export PIPENV_VENV_IN_PROJECT=1
 
 alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
