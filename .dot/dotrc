@@ -10,14 +10,15 @@ export WORKON_HOME="${HOME}/.virtualenvs"
 export VIRTUALENVWRAPPER_PYTHON=$(which python3 || which python)
 export PYTHONUSERBASE="${HOME}/.local"
 # export PIP_INDEX_URL="http://www.example.com/my-packages/"
+export WORKON_HOME="${HOME}/.virtualenvs"
 export PIPENV_VENV_IN_PROJECT=1
 
 alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
 command -v code-insiders >/dev/null 2>&1 &&
-     alias code="code-insiders"
+  alias code="code-insiders"
 
 [ -f "${HOME}/.local/bin/virtualenvwrapper_lazy.sh" ] &&
-     source "${HOME}/.local/bin/virtualenvwrapper_lazy.sh"
+  source "${HOME}/.local/bin/virtualenvwrapper_lazy.sh"
 
 ################################################################################
 uname -s | grep -q Darwin && source "${HOME}/.dot/macrc"
