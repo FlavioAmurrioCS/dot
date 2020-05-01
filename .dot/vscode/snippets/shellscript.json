@@ -1,0 +1,9 @@
+{
+  "Echo Varible":{
+    "prefix": "e",
+    "body":[
+      "echo \"$1: $$1\""
+    ],
+    "description": "Echo out the varible"
+  }
+}

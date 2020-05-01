@@ -1,21 +1,23 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
 
-echo "~/.dot/macrc: mac settings settings"
+rcRollCall "~/.dot/macrc: mac settings settings"
 
 export APPLICATION_DIR="${HOME}/Applications"
 export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
 export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
 export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
-export PATH="${HOMEBREW_HOME}/bin:${PATH}"
-export PATH="${HOME}/.dot/mac_bin:${PATH}"
 
-# [ -f /usr/libexec/java_home ] 2>&1 &&
-#     command -v java 2>&1 &&
-#     export JAVA_HOME="$(/usr/libexec/java_home)"
+[[ ! "${PATH}" == *"${HOMEBREW_HOME}/bin"* ]] &&
+    export PATH="${HOMEBREW_HOME}/bin${PATH:+:${PATH}}"
 
-export NVM_DIR="${HOME}/.nvm"
-[ -s "${HOMEBREW_HOME}/opt/nvm/nvm.sh" ] &&
-    . "${HOMEBREW_HOME}/opt/nvm/nvm.sh" # This loads nvm
-[ -s "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm" ] &&
-    . "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion
+[[ ! "${PATH}" == *"${DOT_HOME}/bin/darwin"* ]] &&
+    export PATH="${DOT_HOME}/bin/darwin${PATH:+:${PATH}}"
+
+alias showhidden='defaults write com.apple.Finder AppleShowAllFiles true; killall Finder'
+
+# export NVM_DIR="${HOME}/.nvm"
+# [ -s "${HOMEBREW_HOME}/opt/nvm/nvm.sh" ] &&
+#     . "${HOMEBREW_HOME}/opt/nvm/nvm.sh" # This loads nvm
+# [ -s "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm" ] &&
+#     . "${HOMEBREW_HOME}/opt/nvm/etc/bash_completion.d/nvm" # This loads nvm bash_completion

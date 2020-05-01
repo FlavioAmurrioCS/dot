@@ -1,0 +1,18 @@
+[
+  {
+    "key": "cmd+m",
+    "command": "workbench.action.toggleMaximizedPanel"
+  },
+  {
+    "key": "cmd+k k",
+    "command": "workbench.action.terminal.kill"
+  },
+  {
+    "key": "alt+tab",
+    "command": "workbench.action.quickSwitchWindow"
+  },
+  {
+    "key": "f13",
+    "command": "workbench.action.zoomReset"
+  }
+]

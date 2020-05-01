@@ -1,19 +1,22 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
 
-echo "~/.bashrc: bash settings"
+function rcRollCall() { [[ $- == *i* ]] && echo "${@}"; }
+rcRollCall "~/.bashrc: bash settings"
+
 export BASH_SILENCE_DEPRECATION_WARNING=1
 
+# ================================== history ===================================
 # https://unix.stackexchange.com/questions/1288/preserve-bash-history-in-multiple-terminal-windows
 export HISTSIZE=9000
-export HISTFILESIZE=${HISTSIZE}
+export HISTFILESIZE="${HISTSIZE}"
 export HISTCONTROL=ignorespace:ignoredups
 
 _bash_history_sync() {
-  builtin history -a       #1
-  HISTFILESIZE=${HISTSIZE} #2
-  builtin history -c       #3
-  builtin history -r       #4
+  builtin history -a         #1
+  HISTFILESIZE="${HISTSIZE}" #2
+  builtin history -c         #3
+  builtin history -r         #4
 }
 
 history() { #5
@@ -31,15 +34,23 @@ shopt -s histverify
   bind '"\e[B": history-search-forward'
 
 source() {
-  if [ -z "$1" ]; then
+  if [ -z "${1}" ]; then
     builtin source "${HOME}/.bashrc"
   else
-    builtin source "$@"
+    builtin source "${@}"
   fi
 }
 
-# export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \color{#fff}{.*}.∗/ (\1)/') \[\e[0m\]\$ "
-export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\w/\[\e[34;1m\] \$ \[\033[0m\]"
+export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\W/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/') \[\e[0m\]\$ "
+export DOT_HOME="${HOME}/.dot"
 
-[ -f ~/.fzf.bash ] && source ~/.fzf.bash
-[ -f "${HOME}/.dot/dotrc" ] && source "${HOME}/.dot/dotrc"
+[ -f "${DOT_HOME}/dotrc" ] && source "${DOT_HOME}/dotrc"
+
+# ==================================== fzf =====================================
+command -v fzf >/dev/null 2>&1 && {
+  [[ $- == *i* ]] &&
+    [ -f "${DOT_HOME}/fzf_scripts/completion.bash" ] &&
+    source "${DOT_HOME}/fzf_scripts/completion.bash" 2>/dev/null
+  [ -f "${DOT_HOME}/fzf_scripts/key-bindings.bash" ] &&
+    source "${DOT_HOME}/fzf_scripts/key-bindings.bash" 2>/dev/null
+}

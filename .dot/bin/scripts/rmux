@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function rmux() {
+  local host="${1}"
+  [ -n "${TMUX}" ] && {
+    echo "Should not open mux inside tmux, ssh-ing instead."
+    ssh "${host}"
+    return
+  }
+  log_warning "Target host: ${host}"
+  # shellcheck disable=SC2016
+  local init='
+  cat > ${HOME}/.rmux.tmux.conf
+  tmux ls 2>/dev/null
+  echo "<create new session>"
+  '
+
+  local selection
+  export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+  selection="$(ssh "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | fzfSelectOne)" || return 1
+
+  # shellcheck disable=SC2016
+  local tmux_cmd='
+  tmux_conf="${HOME}/.rmux.tmux.conf"
+  [ -f "${HOME}/.tmux.conf" ] && tmux_conf="${HOME}/.tmux.conf"
+  tmux -f ${tmux_conf}'
+
+  case "${selection}" in
+  "<create new session>")
+    local new_session_name
+    read -r -p "New Tmux Session Name: " new_session_name
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' new-session -s '"${new_session_name}"
+    ;;
+  *:*)
+    local session_name
+    session_name="$(echo "${selection}" | cut -d ":" -f1)"
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
+    ;;
+  *)
+    echo "WHAT HAPPENED! ${selection}"
+    ;;
+  esac
+
+}
+
+rmux "$@"

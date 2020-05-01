@@ -111,5 +111,15 @@ source() {
   fi
 }
 
-[ -f ~/.fzf.zsh ] && source ~/.fzf.zsh
-[ -f "${HOME}/.dot/dotrc" ] && source "${HOME}/.dot/dotrc"
+export DOT_HOME="${HOME}/.dot"
+
+[ -f "${DOT_HOME}/dotrc" ] && source "${DOT_HOME}/dotrc"
+
+# ==================================== fzf =====================================
+command -v fzf >/dev/null 2>&1 && {
+  [[ $- == *i* ]] &&
+    [ -f "${DOT_HOME}/fzf_scripts/completion.zsh" ] &&
+    source "${DOT_HOME}/fzf_scripts/completion.zsh" 2>/dev/null
+  [ -f "${DOT_HOME}/fzf_scripts/key-bindings.zsh" ] &&
+    source "${DOT_HOME}/fzf_scripts/key-bindings.zsh" 2>/dev/null
+}

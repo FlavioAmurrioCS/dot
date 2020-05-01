@@ -1,0 +1,8 @@
+{
+  "favorites.sortDirection": "ASC",
+  "files.associations": {
+    "envsubst": "shellscript",
+    "**/scripts/*": "shellscript"
+  },
+  "python.pythonPath": "/Users/flavio/.virtualenvs/playgroundPy2/bin/python"
+}

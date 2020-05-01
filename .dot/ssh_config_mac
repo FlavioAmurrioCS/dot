@@ -14,13 +14,18 @@ Host *
   UserKnownHostsFile /dev/null
   ControlPath /tmp/%r@%h:%p
   ControlMaster auto
-  LogLevel FATAL
+#  LogLevel FATAL
 
 Match originalhost ubuntu exec "ifconfig | grep -q '192.168'"
-  HostName 192.168.86.25
+  HostName 192.168.86.24
 
 Host ubuntu
   HostName 25.124.147.55
+
+Host deepo
+  HostName 192.168.86.24
+  User root
+  Port 8822
 
 Host zeus
   User famurrio

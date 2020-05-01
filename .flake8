@@ -1,0 +1,13 @@
+# https://flake8.pycqa.org/en/latest/user/options.html
+# Can install hooks to git flake8 --install-hook=git
+
+[flake8]
+max-line-length = 100
+ignore =
+  E121,
+  E123,
+  T499
+max-complexity = 5
+enable-extensions =
+  H,
+  G123

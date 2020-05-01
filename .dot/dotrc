@@ -1,28 +1,83 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
 
-echo "~/.dot/dotrc: common settings"
-export PATH="$HOME/.local/bin:$PATH"
+rcRollCall "~/.dot/dotrc: common settings"
 
+[[ ! "${PATH}" == *"${DOT_HOME}/bin/scripts:${HOME}/.local/bin"* ]] &&
+  export PATH="${DOT_HOME}/bin/scripts:${HOME}/.local/bin${PATH:+:${PATH}}"
+
+# ==================================== ssh =====================================
+[[ "$(uname -s)" == Darwin ]] && { ssh-add -l >/dev/null 2>&1 || ssh-add; }
+
+# =================================== shell ====================================
 export CLICOLOR=1
 export LSCOLORS=GxFxCxDxBxegedabagaced
+export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --exact"
+VISUAL="$(command -v vim)" &&
+  export VISUAL
+export EDITOR="${VISUAL:-/usr/bin/vim}"
 
+alias ls='ls -GFhtr'
+alias ll='ls -ltr'
+alias di='echo dotenv > .envrc && touch .env && direnv allow'
+
+command -v code-insiders >/dev/null 2>&1 &&
+  ! command -v code >/dev/null 2>&1 &&
+  alias code="code-insiders"
+
+alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
+command -v code >/dev/null 2>&1 &&
+  alias dotcode='code ${DOT_HOME}'
+alias tmux='{ tmux has-session >/dev/null 2>&1 && tmux a; } || tmux'
+
+alias __list_local_project='find "${HOME}/projects" -maxdepth 5 -type d -name .git | sed -e "s|${HOME}/projects/||g" -e "s|/.git||g" | fzf'
+# shellcheck disable=SC2154
+alias c='project="$(__list_local_project)" && code "${HOME}/projects/${project}"'
+alias p='project="$(__list_local_project)" && cd "${HOME}/projects/${project}"'
+alias ..='cd ..'
+alias ...='cd ../..'
+alias ....='cd ../../..'
+alias .....='cd ../../../..'
+alias ......='cd ../../../../..'
+alias .......='cd ../../../../../..'
+
+# =================================== python ===================================
 export WORKON_HOME="${HOME}/.virtualenvs"
-VIRTUALENVWRAPPER_PYTHON=$(command -v python3 || command -v python)
-export VIRTUALENVWRAPPER_PYTHON
+VIRTUALENVWRAPPER_PYTHON=$(command -v python3 || command -v python) &&
+  export VIRTUALENVWRAPPER_PYTHON
 export PYTHONUSERBASE="${HOME}/.local"
 # export PIP_INDEX_URL="http://www.example.com/my-packages/"
 export WORKON_HOME="${HOME}/.virtualenvs"
 export PIPENV_VENV_IN_PROJECT=1
 
-alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
-command -v code-insiders >/dev/null 2>&1 &&
-  alias code="code-insiders"
+# ==================================== java ====================================
+export JAVA_DEBUG_PORT="9009"
+export JPDA_OPTS="-agentlib:jdwp=transport=dt_socket,address=${JAVA_DEBUG_PORT},server=y,suspend=n"
+export JAVA_HOME="${HOME}/.java_home"
+[[ ! "${PATH}" == *"${JAVA_HOME}/bin"* ]] &&
+  export PATH="${JAVA_HOME}/bin${PATH:+:${PATH}}"
 
+[ -n "${CATALINA_HOME}" ] &&
+  alias tomcat='cd ${CATALINA_HOME} && ${CATALINA_HOME}/bin/catalina.sh jpda'
+# =================================== remote ===================================
+# export DEV_HOST=""
+
+# ================================= functions ==================================
+
+# =============================== git functions ================================
+
+# ==================================== tmux ====================================
+[ -n "${TMUX}" ] && function exit() {
+  [ "${1}" == "-f" ] && builtin exit
+  echo "Exit is disabled while in tmux. Use 'exit -f' to exit."
+}
+
+# =================================== source ===================================
 [ -f "${HOME}/.local/bin/virtualenvwrapper_lazy.sh" ] &&
   source "${HOME}/.local/bin/virtualenvwrapper_lazy.sh"
 
-################################################################################
-uname -s | grep -q Darwin && source "${HOME}/.dot/macrc"
-uname -s | grep -q Linux && source "${HOME}/.dot/linuxrc"
+uname -s | grep -q Darwin && source "${DOT_HOME}/macrc"
+
+uname -s | grep -q Linux && source "${DOT_HOME}/linuxrc"
+
 [ -f "${HOME}/.dotrc" ] && source "${HOME}/.dotrc"

@@ -1,10 +1,28 @@
 #!/usr/bin/env bash
-# shellcheck source=/dev/null
 
-echo "~/.dot/linuxrc: linux settings"
+rcRollCall "${DOT_HOME}/linuxrc: linux settings"
 
-export PATH="${HOME}/.dot/linux_bin:${PATH}"
+[[ ! "${PATH}" == *"${DOT_HOME}/bin/linux"* ]] &&
+  export PATH="${DOT_HOME}/bin/linux${PATH:+:${PATH}}"
 
-command -v javac >/dev/null 2>&1 &&
-  JAVA_HOME=$(dirname "$(dirname "$(readlink -f "$(command -v javac)")")") &&
-  export JAVA_HOME
+# =================================== vscode ===================================
+! command -v code >/dev/null 2>&1 &&
+  function code() {
+    ! nc -z localhost "${REMOTE_VSCODE_PORT}" >/dev/null 2>&1 &&
+      echo "Open VsCode on this host to use this tool from external terminal" &&
+      return 1
+    readlink -f "${1}" | nc localhost "${REMOTE_VSCODE_PORT}"
+  }
+
+[ "${TERM_PROGRAM}" == vscode ] &&
+  function ___codeActivator() {
+    code_path="$(command -v code 2>/dev/null)"
+    while read -r data; do
+      echo "${data}" && "${code_path}" "${data}"
+    done
+  }
+
+[ "${TERM_PROGRAM}" == vscode ] &&
+  ! nc -z localhost "${REMOTE_VSCODE_PORT}" && {
+  nc -k -l "${REMOTE_VSCODE_PORT}" | ___codeActivator >/dev/null 2>&1 &
+}
