@@ -1,0 +1,35 @@
+{
+    "editor.suggestSelection": "first",
+    "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+    "python.jediEnabled": false,
+    "python.insidersChannel": "off",
+    "window.zoomLevel": 0,
+    "python.pythonPath": "/usr/bin/python3",
+    "leetcode.hint.configWebviewMarkdown": false,
+    "leetcode.workspaceFolder": "~/.leetcode",
+    "leetcode.defaultLanguage": "python3",
+    "leetcode.hint.commandShortcut": false,
+    "leetcode.showDescription": "Both",
+    "editor.minimap.enabled": false,
+    "leetcode.hint.commentDescription": false,
+    "files.watcherExclude": {
+        "**/.venv/**": true
+    },
+    "search.exclude": {
+        "**/.venv": true
+    },
+    "workbench.startupEditor": "newUntitledFile",
+    "terminal.integrated.shell.osx": "/bin/bash",
+    "shellcheck.enableQuickFix": true,
+    "shellcheck.exclude": [
+        "SC2088"
+    ],
+    "editor.tabSize": 2,
+    "bashIde.explainshellEndpoint": "https://explainshell.com/",
+    "workbench.iconTheme": "vscode-icons",
+    "files.associations": {
+        "ssh_config_*": "ssh_config",
+        "*rc": "shellscript",
+    },
+    "explorer.sortOrder": "type"
+}
