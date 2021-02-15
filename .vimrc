@@ -49,12 +49,13 @@ autocmd FileType make setlocal noexpandtab
 set hlsearch
 set splitright
 set splitbelow
+autocmd BufWritePre * :%s/\s\+$//e
 
 
 """"" Plugins
 call plug#begin()
   Plug 'vim-scripts/CycleColor'
-  Plug 'morhetz/gruvbox' 
+  Plug 'morhetz/gruvbox'
 call plug#end()
 
 try
