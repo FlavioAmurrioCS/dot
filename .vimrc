@@ -49,7 +49,7 @@ autocmd FileType make setlocal noexpandtab
 set hlsearch
 set splitright
 set splitbelow
-
+set omnifunc=syntaxcomplete#Complete
 
 """"" Plugins
 call plug#begin()
