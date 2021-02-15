@@ -50,11 +50,12 @@ set hlsearch
 set splitright
 set splitbelow
 set omnifunc=syntaxcomplete#Complete
+autocmd BufWritePre * :%s/\s\+$//e
 
 """"" Plugins
 call plug#begin()
   Plug 'vim-scripts/CycleColor'
-  Plug 'morhetz/gruvbox' 
+  Plug 'morhetz/gruvbox'
 call plug#end()
 
 try
