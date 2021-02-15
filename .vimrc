@@ -17,3 +17,6 @@ set incsearch
 set tabstop=2
 set shiftwidth=4
 set expandtab
+au FileType python setlocal formatprg=autopep8\ -
+set mouse=a
+set number
