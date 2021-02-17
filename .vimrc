@@ -64,6 +64,8 @@ autocmd BufWritePre * :%s/\s\+$//e
 call plug#begin()
   Plug 'vim-scripts/CycleColor'
   Plug 'morhetz/gruvbox'
+  Plug 'lifepillar/vim-mucomplete'
+  Plug 'davidhalter/jedi-vim'
 call plug#end()
 
 try
@@ -72,3 +74,12 @@ catch
     colorscheme desert
 endtry
 
+set completeopt-=preview
+set completeopt+=longest,menuone,noselect
+set shortmess+=c
+set belloff+=ctrlg
+let g:mucoimplete#enable_auto_at_startup = 1
+"let g:mucomplete#completion_delay = 1
+set backspace=indent,eol,start
+
+let g:jedi#popup_on_dot = 0
