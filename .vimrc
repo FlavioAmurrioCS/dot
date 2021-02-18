@@ -40,7 +40,7 @@ set pastetoggle=<f5>
 autocmd BufNewFile,BufRead *.s set ft=masm
 "Don't turn tabs to spaces for makefiles
 autocmd FileType make setlocal noexpandtab
-autocmd FileType python nnoremap ,format :-1read $HOME/.bashrc
+autocmd FileType python nnoremap ,format :gggqG
 "My color preferences for lecturing
 "highlight Search ctermbg=DarkMagenta ctermfg=cyan
 "highlight Comment ctermfg=LightBlue
@@ -79,7 +79,7 @@ set completeopt+=longest,menuone,noselect
 set shortmess+=c
 set belloff+=ctrlg
 let g:mucoimplete#enable_auto_at_startup = 1
-"let g:mucomplete#completion_delay = 1
+let g:mucomplete#completion_delay = 0
 set backspace=indent,eol,start
 
 let g:jedi#popup_on_dot = 0
