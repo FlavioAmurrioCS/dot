@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# cd into directory interactively
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function fx() {
+  local initial_dir="${1:-${PWD}}"
+  local selected="."
+  while [[ -n "${initial_dir}" ]]; do
+    selected="$(find "${initial_dir}" type d -maxdepth 1 | select_one)" && initial_dir=selected
+  done
+}
+
+fx "$@"

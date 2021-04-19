@@ -1,0 +1,91 @@
+
+compgen -c # will list all the commands you could run.
+compgen -a # will list all the aliases you could run.
+compgen -b # will list all the built-ins you could run.
+compgen -k # will list all the keywords you could run.
+compgen -A function # will list all the functions you could run.
+compgen -A function -abck # will list all the above in one go.
+
+[ -n "${TERM_PROGRAM}" ] && function exit() {
+  [ "$1" == "-f" ] && builtin exit
+  echo "Exit is disabled while in tmux. Use 'exit -f' to exit."
+}
+
+
+
+[ "${TERM_PROGRAM}" = vscode ] && function code_listener() {
+  local code_path
+  code_path="$(command -v code 2>/dev/null)"
+  nc -k -l 5000 | tee /tmp/foo &
+  # 2602 2019-11-23 10:28:57 echo Text to seuviugvkghvikygvind | nc localhost 5000
+}
+
+
+if ! command -v code >/dev/null 2>&1; then
+  function code() {
+    [ "$#" -lt 1 ] && echo "USAGE: code <file|folder>" && return 1
+    target=$(readlink -f "$1")
+    target_type=""
+    [ -f "$1" ] && target_type="file"
+    [ -d "$1" ] && target_type="folder"
+    [ -z "$target_type" ] && echo "$target does not exist." && return 1
+    echo "$target_type $(hostname) $target" >> /tmp/open_code
+  }
+fi
+
+function ___codeActivator() {
+  while read -r data; do
+    read -r target_type target_host_full target <<<"${data}"
+    target_host=${target_host_full//.novalocal/}
+    # echo "target_type: $target_type"
+    # echo "target_host: $target_host"
+    # echo "target: $target"
+    c -h "$target_host" "$target" >/dev/null 1>&2
+
+    # [ "$target_type" == "file" ] && code --file-uri "vscode-remote://ssh-remote+${target_host}${target}"
+    # [ "$target_type" == "folder" ] && code --folder-uri "vscode-remote://ssh-remote+${target_host}${target}"
+  done
+}
+
+function foo() {
+  ssh dev-ilg 'touch /tmp/open_code && tail -n 0 -f /tmp/open_code' | ___codeActivator
+}
+
+#!/usr/bin/env bash
+function ___codeActivator() {
+  while read -r data; do
+    read -r target_type target_host_full target <<<"${data}"
+    target_host=${target_host_full//.novalocal/}
+    # echo "target_type: $target_type"
+    # echo "target_host: $target_host"
+    # echo "target: $target"
+    c -h "$target_host" "$target" >/dev/null 1>&2
+
+    # [ "$target_type" == "file" ] && code --file-uri "vscode-remote://ssh-remote+${target_host}${target}"
+    # [ "$target_type" == "folder" ] && code --folder-uri "vscode-remote://ssh-remote+${target_host}${target}"
+  done
+}
+
+ssh dev-ilg 'touch /tmp/open_code && tail -n 0 -f /tmp/open_code' | ___codeActivator
+
+nohup nc -k -l 5000 | tee /tmp/foo &
+
+nc 5000
+nc localhost 5000
+nc -l 5000
+nc 5000
+nc -l 5000 | xargs code
+nc -k -l 5000
+nc -k -l 5000 | xargs code
+echo Text to send & echo. | nc localhost 5000
+echo Text to send | nc localhost 5000
+nc -k -l 5000
+nc -k -l 5000 | tee /tmp/foo
+nohup nc -k -l 5000 | tee /tmp/foo &
+nc -k -l 5000 | tee /tmp/foo &
+echo Text to seuviugvkghvikygvind | nc localhost 5000
+echo Text to send | nc localhost 5000
+
+export NVM_DIR="${HOME}/.nvm"
+[ -s "${NVM_DIR}/nvm.sh" ] && \. "${NVM_DIR}/nvm.sh"  # This loads nvm
+[ -s "${NVM_DIR}/bash_completion" ] && \. "${NVM_DIR}/bash_completion"  # This loads nvm bash_completion

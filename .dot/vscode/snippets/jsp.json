@@ -1,0 +1,71 @@
+{
+  // Place your snippets for jsp here. Each snippet is defined under a snippet name and has a prefix, body and
+  // description. The prefix is what is used to trigger the snippet and the body will be expanded and inserted. Possible variables are:
+  // $1, $2 for tab stops, $0 for the final cursor position, and ${1:label}, ${2:another} for placeholders. Placeholders with the
+  // same ids are connected.
+  // Example:
+  "cout": {
+    "prefix": "cout",
+    "body": [
+      "<c:out value=\"${emailfwdBean.$CLIPBOARD}\"/>"
+    ],
+    "description": "c:out"
+  },
+  "foptions": {
+    "prefix": "foptions",
+    "body": [
+      "<form:options items=\"${theBean.$CLIPBOARD}\" itemLabel=\"name\" itemValue=\"value\" />"
+    ],
+    "description": "c:out"
+  },
+  "jheader": {
+    "prefix": "jheader",
+    "body": [
+      "<%@ taglib uri=\"http://java.sun.com/jsp/jstl/core\" prefix=\"c\" %>",
+      "<%@ taglib uri=\"http://java.sun.com/jsp/jstl/fmt\" prefix=\"fmt\" %>",
+      "<%@ taglib uri=\"http://www.springframework.org/tags/form\" prefix=\"form\" %>"
+    ],
+    "description": "Header"
+  },
+  "subclr": {
+    "prefix": "subclr",
+    "body": [
+      "<input type=\"submit\" name=\"but_submit\" value=\"Submit\">",
+      "<input type=\"button\" name=\"but_clear\" value=\"Clear\" onclick=\"clearFields(this)\">"
+    ],
+    "description": "Submit Clean Buttons"
+  },
+  "cforeach": {
+    "body": [
+      "<c:forEach items=\"${$1}\" var=\"$2\">",
+      "$3",
+      "</c:forEach>"
+    ],
+    "description": "cforeach",
+    "prefix": "cforeach"
+  },
+  "coptions": {
+    "body": [
+      "<form:options items=\"${${1:list}\" itemLabel=\"${2:name}\" itemValue=\"${3:value}\"/>"
+    ],
+    "description": "coptions",
+    "prefix": "coptions"
+  }
+  "cchoose": {
+    "body": [
+      "<c:choose>",
+      "  <c:when test=\"\\${isRoot}\">",
+      "    $2",
+      "  </c:when>    ",
+      "",
+      "  <c:otherwise>",
+      "    $3",
+      "  </c:otherwise>",
+      "</c:choose>"
+    ],
+    "description": "cchoose",
+    "prefix": "cchoose"
+  }
+
+
+}

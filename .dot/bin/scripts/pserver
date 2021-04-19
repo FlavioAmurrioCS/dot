@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function pserver() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-pserver} [port]" "$@" && return 0
+  local port="${1}"
+  [ -z "${port}" ] &&
+    log_warning "Generating port number based off current directory." &&
+    port="$(strToHashPort "$(basename "$(pwd)")")"
+  nohup python -m SimpleHTTPServer "${port}" &
+  log_success "http://localhost:${port}"
+}
+
+pserver "${@}"

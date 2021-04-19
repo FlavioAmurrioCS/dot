@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+# TODO: CONTINUE IMPROVEMENT. MAYBE MERGE WITH SS*
+function issh() {
+  local remote_bashrc_file=${REMOTE_BASHRC_FILE:-${HOME}/.bashrc}
+  local ssh_target="${1}"
+  local user_name
+  if [[ "${1}" == *"@"* ]]; then
+    read -r user_name ssh_target <<<"${ssh_target//@/ }"
+    ssh -t "${ssh_target}" "$(cat "${remote_bashrc_file}"); sudo su ${user_name}"
+  else
+    ssh -t "${ssh_target}" "$(cat "${remote_bashrc_file}"); bash"
+    # ssh "${ssh_target}" 'cat > /tmp/bashrc; bash --rcfile /tmp/bashrc -l' <"${HOME}/.bashrc"
+    # ssh "${ssh_target}" 'cat > /tmp/bashrc; bash' <"${HOME}/.bashrc"
+  fi
+}
+
+issh "${@}"

@@ -154,6 +154,350 @@
   },
   "rewrap.wrappingColumn": 100,
   "files.autoSave": "afterDelay",
-
-
+  "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: LLVM, SpaceBeforeParens: Never, IndentCaseLabels: true }",
+  "C_Cpp.updateChannel": "Insiders",
+  "[ansible]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[dockerfile]": {
+    "editor.defaultFormatter": "ms-azuretools.vscode-docker"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "HookyQR.beautify"
+  },
+  "[java]": {
+    "editor.defaultFormatter": "redhat.java"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "HookyQR.beautify"
+  },
+  "[jinja-yaml]": {
+    "editor.defaultFormatter": "redhat.vscode-yaml"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "HookyQR.beautify"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "vscode.json-language-features"
+  },
+  "[markdown]": {
+    "editor.defaultFormatter": "tehnix.vscode-tidymarkdown"
+  },
+  "[python]": {
+    "editor.tabSize": 4
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "HookyQR.beautify"
+  },
+  "[shellscript]": {
+    "editor.defaultFormatter": "foxundermoon.shell-format"
+  },
+  "[xml]": {
+    "editor.defaultFormatter": "DotJoshJohnson.xml"
+  },
+  "ansible-linter.path": "/Users/famurriomoya/.virtualenvs/ansible-2.8.5/bin/ansible-lint",
+  "beautify.language": {
+    "css": [
+      "css",
+      "less",
+      "scss"
+    ],
+    "html": [
+      "htm",
+      "html",
+      "jsp",
+      "jinja-html"
+    ],
+    "js": {
+      "filename": [
+        ".jshintrc",
+        ".jsbeautifyrc"
+      ],
+      "type": [
+        "javascript",
+        "json",
+        "jsonc",
+        "gradle"
+      ]
+    }
+  },
+  "boot-java.change-detection.on": true,
+  "boot-java.support-spring-xml-config.on": true,
+  "cSpell.enableFiletypes": [
+    "!jsonc"
+  ],
+  "debug.onTaskErrors": "showErrors",
+  "editor.detectIndentation": false,
+  "editor.formatOnType": false,
+  "editor.insertSpaces": true,
+  "editor.minimap.enabled": false,
+  "editor.minimap.renderCharacters": false,
+  "editor.renderWhitespace": "boundary",
+  "editor.rulers": [
+    80,
+    100,
+    120
+  ],
+  "editor.suggestSelection": "first",
+  "editor.tabSize": 2,
+  "emeraldwalk.runonsave": {
+    "autoClearConsole": true,
+    "commands": [
+      {
+        "cmd": "",
+        "match": "\\.jsp"
+      },
+      {
+        "cmd": "",
+        "match": "\\.xhtml"
+      }
+    ],
+    "shell": "/bin/bash"
+  },
+  "emmet.includeLanguages": {
+    "jsp": "html"
+  },
+  "explorer.confirmDragAndDrop": false,
+  "explorer.openEditors.visible": 10,
+  "explorer.sortOrder": "type",
+  "files.associations": {
+    "**/*_vars/**/*.yml": "ansible",
+    "**/*ansible*/**/*.yml": "ansible",
+    "**/ansible/**/*inventory": "ini",
+    "**/ansible/**/hosts": "ini",
+    "**/defaults/**/*": "ansible",
+    "**/group_vars/**/*": "jinja-yaml",
+    "**/handler*/*.yml": "ansible",
+    "**/host_vars/**/*": "jinja-yaml",
+    "**/inventory/*/*": "ansible",
+    "**/meta/*.yml": "ansible",
+    "**/playbooks/**/*.yml": "ansible",
+    "**/roles/**/*.yml": "ansible",
+    "**/tasks/**/*.yml": "ansible",
+    "**/vars/**/*.yml": "ansible",
+    "*.config": "properties",
+    ".flake8": "ini",
+    ".htmlhintrc": "jsonc",
+    ".tmux.conf*": "properties",
+    "ansible.cfg": "ini",
+    "*.pkb": "sql"
+  },
+  "files.eol": "\n",
+  "files.exclude": {
+    "**/*.class": true,
+    "**/*.pyc": true,
+    "**/.DS_Store": true,
+    "**/._*": true,
+    "**/.classpath": true,
+    "**/.factorypath": true,
+    "**/.git": true,
+    "**/.hg": true,
+    "**/.project": true,
+    "**/.settings": true,
+    "**/.svn": true,
+    "**/CVS": true,
+    "**/exploded": true
+  },
+  "files.insertFinalNewline": true,
+  "files.trimFinalNewlines": true,
+  "files.trimTrailingWhitespace": true,
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/.venv/**": true,
+    "**/node_modules/**": true
+  },
+  "git.autoRepositoryDetection": "openEditors",
+  "git.autoStash": true,
+  "git.autofetch": true,
+  "git.defaultCloneDirectory": "${env:HOME}/projects",
+  "git.detectSubmodules": false,
+  "git.enableSmartCommit": true,
+  "git.ignoreLegacyWarning": true,
+  "git.smartCommitChanges": "tracked",
+  "githubPullRequests.telemetry.enabled": false,
+  "gitlens.advanced.messages": {
+    "suppressGitVersionWarning": true,
+    "suppressShowKeyBindingsNotice": true
+  },
+  "gitlens.advanced.telemetry.enabled": false,
+  "gitlens.blame.ignoreWhitespace": true,
+  "gitlens.codeLens.includeSingleLineSymbols": false,
+  "html.format.indentHandlebars": true,
+  "html.format.indentInnerHtml": true,
+  "htmlhint.documentSelector": [
+    "html",
+    "htm",
+    "jsp"
+  ],
+  "java.checkstyle.autocheck": false,
+  "java.checkstyle.configuration": "/tmp/symlinks/coding-standards/java/checkstyle.xml",
+  "java.checkstyle.properties": {
+    "checkstyle.header.file": "/tmp/symlinks/coding-standards/java/header.txt"
+  },
+  "java.checkstyle.version": "8.32",
+  "java.completion.guessMethodArguments": true,
+  "java.completion.importOrder": [
+    "java",
+    "javax",
+    "org",
+    "com"
+  ],
+  "java.completion.overwrite": false,
+  "java.configuration.updateBuildConfiguration": "automatic",
+  "java.debug.settings.forceBuildBeforeLaunch": false,
+  "java.errors.incompleteClasspath.severity": "ignore",
+  "java.format.settings.url": "/tmp/symlinks/coding-standards/java/EclipseFormatter.xml",
+  "java.implementationsCodeLens.enabled": true,
+  "java.jdt.ls.vmargs": "-javaagent:/tmp/symlinks/jar/lombok.jar",
+  "java.project.importOnFirstTimeStartup": "automatic",
+  "java.refactor.renameFromFileExplorer": "autoApply",
+  "java.referencesCodeLens.enabled": true,
+  "java.requirements.JDK11Warning": false,
+  "java.semanticHighlighting.enabled": true,
+  "javascript.referencesCodeLens.enabled": true,
+  "javascript.referencesCodeLens.showOnAllFunctions": true,
+  "liveServer.settings.donotShowInfoMsg": true,
+  "liveServer.settings.useBrowserPreview": true,
+  "partialDiff.enableTelemetry": false,
+  "projectManager.any.baseFolders": [
+    "$home/projects"
+  ],
+  "projectManager.any.maxDepthRecursion": 1,
+"pyright.useLibraryCodeForTypes": true,
+  "python.formatting.autopep8Args": [
+    "--global-config=${env:HOME}/projects/vscode_setup/config/.flake8",
+    "--max-line-length=100",
+    "--hang-closing"
+  ],
+  "python.jediEnabled": false,
+  "python.languageServer": "Pylance",
+  "python.linting.flake8Enabled": true,
+  "python.linting.pycodestyleArgs": [
+    "--max-line-length=100",
+    "--hang-closing"
+  ],
+  "python.linting.pylintEnabled": false,
+  "remote.SSH.enableDynamicForwarding": false,
+  "remote.SSH.remotePlatform": {
+    "vde": "linux",
+    "vdi": "linux"
+  },
+  "remote.SSH.useLocalServer": true,
+  "remote.downloadExtensionsLocally": true,
+  "remote.extensionKind": {
+    "alefragnani.project-manager": "workspace",
+    "auchenberg.vscode-browser-preview": "workspace",
+    "eyhn.vscode-vibrancy": [
+      "ui"
+    ],
+    "ms-azuretools.vscode-docker": "workspace",
+    "pivotal.vscode-boot-dev-pack": "workspace",
+    "shyykoserhiy.vscode-spotify": [
+      "ui",
+      "workspace"
+    ]
+  },
+  "rest-client.enableTelemetry": false,
+  "rsp-ui.enableStartServerOnActivation": [
+    {
+      "id": "redhat.vscode-community-server-connector",
+      "name": "Community Server Connector",
+      "startOnActivation": true
+    },
+    {
+      "id": "redhat.vscode-server-connector",
+      "name": "Red Hat Server Connector",
+      "startOnActivation": true
+    }
+  ],
+  "search.exclude": {
+    "**/*.cfg": true,
+    "**/*.md": true,
+    "**/.venv": true,
+    "**/bower_components": true,
+    "**/exploded": true,
+    "**/node_modules": true
+  },
+  "shellcheck.customArgs": [
+    "-x",
+    "-o",
+    "all"
+  ],
+  "shellcheck.enableQuickFix": true,
+  "shellcheck.exclude": [
+    "SC2088"
+  ],
+  "shellformat.path": "/tmp/symlinks/shfmt",
+  "sonarlint.disableTelemetry": true,
+  "sonarlint.rules": {
+    "java:S116": {
+      "level": "off"
+    },
+    "java:S1181": {
+      "level": "off"
+    },
+    "java:S1192": {
+      "level": "off"
+    },
+    "java:S3776": {
+      "level": "off"
+    },
+    "java:S1165": {
+      "level": "off"
+    },
+    "java:S110": {
+      "level": "off"
+    },
+    "java:S2975": {
+      "level": "off"
+    },
+    "typescript:S4325": {
+      "level": "off"
+    }
+  },
+  "sourcery.token": "user_sJFmSzI2iiRJpXU3PgryrC9lfTGv_RMDlZs1_4B_EiYHE8ksA0F_buvgyKM",
+  "spotify.forceWebApiImplementation": true,
+  "sqltools.telemetry": false,
+  "sqltools.useNodeRuntime": true,
+  "telemetry.enableCrashReporter": false,
+  "telemetry.enableTelemetry": false,
+  "terminal.integrated.env.linux": {},
+  "terminal.integrated.env.osx": {
+    "CATALINA_HOME_7": "${env:HOME}/apache-tomcat-7.0.92"
+  },
+  "terminal.integrated.scrollback": 999999,
+  "terminal.integrated.shell.linux": "/bin/bash",
+  "terminal.integrated.shell.osx": "/bin/bash",
+  "terraform.indexing": {
+    "delay": 500,
+    "enabled": false,
+    "exclude": [
+      ".terraform/**/*",
+      "**/.terraform/**/*"
+    ],
+    "liveIndexing": false
+  },
+  "terraform.telemetry.enabled": false,
+  "todo-tree.highlights.enabled": true,
+  "todo-tree.tree.showScanModeButton": false,
+  "typescript.implementationsCodeLens.enabled": true,
+  "typescript.referencesCodeLens.enabled": false,
+  "typescript.referencesCodeLens.showOnAllFunctions": false,
+  "vsintellicode.modelDownloadPath": "/tmp/symlinks/vscodeModels",
+  "vsintellicode.modify.editor.suggestSelection": "automaticallyOverrodeDefaultValue",
+  "window.restoreWindows": "all",
+  "workbench.iconTheme": "vscode-icons",
+  "xml.codeLens.enabled": true,
+  "xml.format.preserveEmptyContent": true,
+  "xml.format.splitAttributes": true,
+  "xmlTools.splitAttributesOnFormat": true,
+  "xmlTools.xmlFormatterImplementation": "classic",
+  "zenMode.centerLayout": false,
+  "zenMode.hideActivityBar": false,
+  "zenMode.hideLineNumbers": false,
+  "screencastMode.onlyKeyboardShortcuts": true,
+  "vsicons.dontShowNewVersionMessage": true,
+  "editor.formatOnSaveMode": "modifications",
+  "window.zoomLevel": 1
 }

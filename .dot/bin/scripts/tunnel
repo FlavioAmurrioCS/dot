@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+# TODO: SWITCH TO 127.0.0.1
+function tunnel() {
+  help_arg_count_usage 2 "${FUNCNAME[0]:-tunnel} <hostname> <remote_port> [local_port]" "$@" && return 0
+  local host=${1} &&
+    local remote_port=${2} &&
+    local local_port=${2} &&
+    [ "$#" -ge 3 ] && local_port=${3} || true &&
+    ssh -N -f -L "localhost:${local_port}:""localhost:${remote_port}" "${host}" &&
+    msg --success "Tunnel opened from ${host}:${remote_port} to localhost:${local_port}. (http://localhost:${local_port})"
+    # TODO: Merge tunnel and tunneldb
+    # ssh -N -f -L 1526:BLANK:1526 BLANK
+}
+
+# TODO: COMBINE THESE TWO
+function tunnel_kill() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-tunnel_kill} [port]" "$@" && return 0
+  local port="${1}"
+  { [ -n "${port}" ] && msg --info "Killing tunnel on port ${port}."; } ||
+    msg --info "Killing all tunnels."
+  # shellcheck disable=SC2009
+  ps aux | grep -E "ssh -N.*${port}" | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+  # shellcheck disable=SC2009
+  ps aux | grep -E "ssh.*mux" | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+}
+
+tunnel "${@}"

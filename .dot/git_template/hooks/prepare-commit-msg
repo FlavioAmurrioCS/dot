@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+# This hook adds the last segment of your branch name (everything after the last `/`) to every commit message.
+# For instance, if your branch is named `feature/JIRA-1234`, it will add `JIRA-1234: ` to your commit msgs.
+#
+# To install, copy this file to any project's `./git/hooks` directory and
+# `chmod 755 ./git/hooks/prepare-commit-msg` to enable it.
+#
+# Adapted from https://stackoverflow.com/questions/5894946/how-to-add-gits-branch-name-to-the-commit-message
+
+COMMIT_HOOK_IGNORE="${COMMIT_HOOK_IGNORE:-${USER}}"
+
+git remote -v 2>/dev/null | grep -iqE "${COMMIT_HOOK_IGNORE}" && exit 0
+
+branchPath=$(git symbolic-ref -q HEAD)
+branchName=${branchPath##*/}
+branchName=$(echo "${branchName}" | grep -oiE "[A-Z]{2,}-[0-9]{1,}" | tr '[:lower:]' '[:upper:]')
+
+firstLine=$(head -n1 "${1}")
+
+tmp_file="$(mktemp)"
+
+if [ -z "${firstLine}" ]; then
+  sed -e "1s/^/${branchName}: /" "${1}" > "${tmp_file}"
+  mv "${tmp_file}" "${1}"
+fi

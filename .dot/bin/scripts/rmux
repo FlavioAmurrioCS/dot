@@ -5,6 +5,8 @@ SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/sc
   [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
   source "${SCRIPT_HOME}/__script_utilities.sh"
 
+# [ -x /usr/local/bin/kinit ] && /usr/local/bin/kswitch -p "${USER}@AUTH.COM" 2>/dev/null
+
 function rmux() {
   local host="${USER}.BLANK"
   [[ -n ${1} && "${1}" != -* ]] && host="${1}" && shift 1

@@ -1,39 +1,90 @@
 #!/usr/bin/env bash
-# shellcheck source=/dev/null
+# shellcheck disable=SC2154
+# shellcheck disable=SC2142
 
-rcRollCall "~/.dot/dotrc: common settings"
+# TODO: REMOVE
+# status "~/.dot/dotrc: common settings"
 
 [[ ! "${PATH}" == *"${DOT_HOME}/bin/scripts:${HOME}/.local/bin"* ]] &&
   export PATH="${DOT_HOME}/bin/scripts:${HOME}/.local/bin${PATH:+:${PATH}}"
 
 # ==================================== ssh =====================================
 [[ "$(uname -s)" == Darwin ]] && { ssh-add -l >/dev/null 2>&1 || ssh-add; }
+#SSH SCP Aliases
+if [ -x /usr/local/bin/kinit ]; then
+  (/usr/local/bin/kswitch -p "${USER}@BLANK" 2>/dev/null &)
+  (,kcheck.py &)
+  alias ssh='/usr/local/bin/kswitch -p ${USER}@BLANK 2> /dev/null; /usr/bin/ssh'
+  alias scp='/usr/local/bin/kswitch -p ${USER}@BLANK 2> /dev/null; /usr/bin/scp'
+fi
 
 # =================================== shell ====================================
-export CLICOLOR=1
-export LSCOLORS=GxFxCxDxBxegedabagaced
+export CLICOLOR="1"
+export LSCOLORS="GxFxCxDxBxegedabagaced"
+export TERM=xterm-256color
+export MORE='-R -i'
+export LESS="${MORE}"
+export LESS_TERMCAP_mb=$'\e[01;31m'       # begin blinking
+export LESS_TERMCAP_md=$'\e[01;38;5;74m'  # begin bold
+export LESS_TERMCAP_me=$'\e[0m'           # end mode
+export LESS_TERMCAP_se=$'\e[0m'           # end standout-mode
+export LESS_TERMCAP_so=$'\e[38;5;246m'    # begin standout-mode - info box
+export LESS_TERMCAP_ue=$'\e[0m'           # end underline
+export LESS_TERMCAP_us=$'\e[04;38;5;146m' # begin underline
+export GREP_OPTIONS='--color=auto --line-buffered'
+
+# TODO: INCLUDE IT HERE . /Users/famurriomoya/dev/base16-fzf/bash/base16-bright.config
 export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --exact"
-VISUAL="$(command -v vim)" &&
-  export VISUAL
+export VISUAL="/usr/bin/vim"
 export EDITOR="${VISUAL:-/usr/bin/vim}"
 
 alias ls='ls -GFhtr'
 alias ll='ls -ltr'
 alias di='echo dotenv > .envrc && touch .env && direnv allow'
+alias myip='dig TXT +short o-o.myaddr.l.google.com @ns1.google.com'
 
 command -v code-insiders >/dev/null 2>&1 &&
   ! command -v code >/dev/null 2>&1 &&
   alias code="code-insiders"
 
+alias cr='$(grep "^code.*--f" $HISTFILE | grep -v -e "|" -e "code$" -e "code $" | sort -u | fzf)'
+
 alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
 command -v code >/dev/null 2>&1 &&
-  alias dotcode='code ${DOT_HOME}'
+  alias configcode='code ${DOT_HOME}'
 alias tmux='{ tmux has-session >/dev/null 2>&1 && tmux a; } || tmux'
 
 alias __list_local_project='find "${HOME}/projects" -maxdepth 5 -type d -name .git | sed -e "s|${HOME}/projects/||g" -e "s|/.git||g" | fzf'
 # shellcheck disable=SC2154
 alias c='project="$(__list_local_project)" && code "${HOME}/projects/${project}"'
 alias p='project="$(__list_local_project)" && cd "${HOME}/projects/${project}"'
+
+alias noproxy='port 9999 -k; unset {{ALL,HTTP,HTTPS}_PROXY,{http,https}_proxy}'
+
+alias nonprod='rmux nonprod'
+alias bastion='rmux bastion'
+alias osjump='rmux osjump'
+alias auto='rmux auto'
+alias vde='rmux vde'
+alias pprint='echo -e $(pbpaste | perl -MHTML::Entities -pe '"'"'decode_entities(${_});'"'"')'
+
+# ================================== gitalias ==================================
+alias push='git push 2>/dev/null || $(git push 2>&1 | grep "git push")'
+alias checkout='git branch -a | cut -c 3- | grep -v HEAD | sed "s|remotes/origin/||" | sort -u | fzf -0 | xargs -I {} git checkout {}'
+alias git_tags='git describe --tags $(git rev-list --tags --max-count=1)'
+alias git_reset='git reset HEAD --hard'
+alias git_clean='git clean -fd'
+alias git_clean_branch='git branch | grep -v "*" | cut -c 3- | xargs git branch -D'
+alias git_history='git log --full-history --'
+alias _get_log_files='find . -type f | grep -e ".log" -e ".err"'
+alias _get_files='find . -type f | grep -v -e "/bin/" -e "/build/" -e "/.git/" -e "/.idea/" -e ".jar$"'
+alias p='dest=$(find ~/projects -maxdepth 1 -type d | fzf) && cd ${dest}'
+alias cdf='dest=$(find . -type d | fzf) && cd ${dest}'
+alias t='dest=$(_get_log_files | fzf) && tail -f ${dest}'
+alias v='dest=$(_get_files | fzf) && vim ${dest}'
+alias cf='dest=$(_get_files | fzf) && code ${dest}'
+alias gf='gw tasks --all | grep -oiE "[a-z]+:[a-z:]+" | auniq | fzf | xargs -I{} bash -c "echo gw {}; gw {}"'
+alias auniq="awk '!a["'$0'"]++'"
 alias ..='cd ..'
 alias ...='cd ../..'
 alias ....='cd ../../..'
@@ -41,43 +92,121 @@ alias .....='cd ../../../..'
 alias ......='cd ../../../../..'
 alias .......='cd ../../../../../..'
 
+export ANSIBLE_VAULT_PASSWORD_FILE="${HOME}/."
 # =================================== python ===================================
 export WORKON_HOME="${HOME}/.virtualenvs"
 VIRTUALENVWRAPPER_PYTHON=$(command -v python3 || command -v python) &&
   export VIRTUALENVWRAPPER_PYTHON
 export PYTHONUSERBASE="${HOME}/.local"
-# export PIP_INDEX_URL="http://www.example.com/my-packages/"
+# export PIP_INDEX_URL="https://BLANK/pypi-virtual/simple"
 export WORKON_HOME="${HOME}/.virtualenvs"
 export PIPENV_VENV_IN_PROJECT=1
+export POETRY_VIRTUALENVS_IN_PROJECT=true
+
+# ==================================== node ====================================
+# export NVM_NODEJS_ORG_MIRROR="https://BLANK/nodejs"
 
 # ==================================== java ====================================
 export JAVA_DEBUG_PORT="9009"
 export JPDA_OPTS="-agentlib:jdwp=transport=dt_socket,address=${JAVA_DEBUG_PORT},server=y,suspend=n"
 export JAVA_HOME="${HOME}/.java_home"
-[[ ! "${PATH}" == *"${JAVA_HOME}/bin"* ]] &&
-  export PATH="${JAVA_HOME}/bin${PATH:+:${PATH}}"
+export CATALINA_HOME="${HOME}/.tomcat"
+alias tomcat_start='cd "${CATALINA_HOME}" && "${CATALINA_HOME}/bin/catalina.sh" jpda start && cd -'
+alias tomcat_stop='cd "${CATALINA_HOME}" && "${CATALINA_HOME}/bin/catalina.sh" jpda stop && cd -'
+alias tomcat_tail='tail -f "${CATALINA_HOME}/logs/catalina.out"'
+alias tomcat_kill='ps aux | grep tomcat | grep -v -e tail -e grep | awk '\''{print $2}'\'' | xargs -I {} kill -9 {}'
+alias mux_kill='ps aux | grep ssh | grep "\[mux" | awk '\''{print $2}'\'' | xargs kill -9'
+alias cs_reset='mux_kill; ssh vde "ukill gradle -k; ukill code-server -k"'
 
 [ -n "${CATALINA_HOME}" ] &&
   alias tomcat='cd ${CATALINA_HOME} && ${CATALINA_HOME}/bin/catalina.sh jpda'
 # =================================== remote ===================================
-# export DEV_HOST=""
+export VDE_HOST="BLANK"
+export DEV_HOST="${VDE_HOST}"
 
-# ================================= functions ==================================
+export REMOTE_VSCODE_PORT="1337"
+export MSG_LOG_LEVEL_LIMIT="0"
 
-# =============================== git functions ================================
+{ [ ! -d /tmp/symlinks ] && ln -sfn "${HOME}/.dot/symlinks" "/tmp/"; } >/dev/null 2>&1
 
 # ==================================== tmux ====================================
-[ -n "${TMUX}" ] && function exit() {
-  [ "${1}" == "-f" ] && builtin exit
-  echo "Exit is disabled while in tmux. Use 'exit -f' to exit."
+# TODO: Move inside tmux.conf
+[ -n "${TMUX}" ] && rmux --help &&
+  alias fibv='tmux-layout-dwindle brvs' &&
+  alias fibh='tmux-layout-dwindle brhs' &&
+  function tmw() {
+    # TODO: Use this to setup initial workspace
+    tmux split-window -dh "$*"
+  } &&
+    function exit() {
+      [ "${1}" == "-f" ] && builtin exit
+      echo "Exit is disabled while in tmux. Use 'exit -f' to exit."
+    }
+
+function activate_proxy() {
+  local proxy_host=${1:-${USER}.BLANK}
+  lsof -i ":9999" | grep LISTEN | awk '{print $2}' | sort -u | xargs kill -9 2>/dev/null
+  ssh -N -f -K -D 9999 -C "${proxy_host}" 2>/dev/null &&
+    export ALL_PROXY=socks5://localhost:9999 && msg --success "Using ${proxy_host} as proxy."
+}
+nc -z localhost 9999 >/dev/null 2>&1 && export ALL_PROXY=socks5://localhost:9999
+
+function tunnel_docker() {
+  local proxy_host=${1:-${USER}.BLANK}
+
+  ssh -N -f -L localhost:23750:/var/run/docker.sock "${proxy_host}" &&
+    export DOCKER_HOST="tcp://localhost:23750"
+}
+
+nc -z localhost 23750 >/dev/null 2>&1 && export DOCKER_HOST="tcp://localhost:23750"
+
+function flask_run() {
+  FLASK_APP=$1 FLASK_DEBUG=1 python -m flask run
+}
+
+# export proxy="http://10.178.62.4:3128"
+# curl -x "${proxy}" -s -m 2 https://www.google.com > /dev/null && export {{ALL,HTTP,HTTPS}_PROXY,{http,https}_proxy}="${proxy}"
+
+function jenkinsValidate() {
+  local jenkins_file="${1}"
+  [ ! -f "${jenkins_file}" ] && echo "${jenkins_file} does not exist!" && return 1
+  local jenkins_url="${JENKINS_URL:-BLANK}"
+  local username="${JENKINS_USER:-${USER}}"
+  local password
+  password="${JENKINS_PASSWORD:-$(read -r -s -p "Enter Jenkins' password: " temp && echo "${temp}")}" || return 1
+  local jenkins_crumb
+  jenkins_crumb=${JENKINS_CRUMB:-$(curl --silent --user "${username}:${password}" "${jenkins_url}/crumbIssuer/api/xml?xpath=concat(//crumbRequestField,\":\",//crumb)")}"" || return 1
+  export JENKINS_CRUMB="${jenkins_crumb}"
+  export JENKINS_PASSWORD="${password}"
+  echo
+  curl \
+    --user "${username}:${password}" \
+    -X POST \
+    -H "${jenkins_crumb}" \
+    -F "jenkinsfile=<${jenkins_file}" \
+    "${jenkins_url}/pipeline-model-converter/validate"
+}
+
+function scptovde() {
+  scp -r "${1}" vde:~/scp/
 }
 
 # =================================== source ===================================
+# shellcheck source=/dev/null
 [ -f "${HOME}/.local/bin/virtualenvwrapper_lazy.sh" ] &&
   source "${HOME}/.local/bin/virtualenvwrapper_lazy.sh"
 
+# shellcheck source=./macrc
 uname -s | grep -q Darwin && source "${DOT_HOME}/macrc"
 
+# shellcheck source=./linuxrc
 uname -s | grep -q Linux && source "${DOT_HOME}/linuxrc"
 
+# shellcheck source=../.localrc
 [ -f "${HOME}/.dotrc" ] && source "${HOME}/.dotrc"
+
+[[ ! "${PATH}" == *"${JAVA_HOME}/bin"* ]] &&
+  export PATH="${JAVA_HOME}/bin${PATH:+:${PATH}}"
+
+[[ ! "${PATH}" == *"${NODE_HOME}/bin"* ]] &&
+  export PATH="${NODE_HOME}/bin${PATH:+:${PATH}}"

@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+sleep_time="5"
+
+while true; do
+  "$@" && exit 0
+  echo "Retrying '$*' after ${sleep_time} seconds..."
+  sleep "${sleep_time}"
+done

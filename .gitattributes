@@ -1,1 +1,2 @@
+# or *.vault.yml, or *-vault.yml, or whatever convention you use for vaults
 *vault diff=ansible-vault

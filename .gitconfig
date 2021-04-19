@@ -1,3 +1,6 @@
+###################################################################################################
+#######################################     .gitconfig     ########################################
+###################################################################################################
 [core]
   # editor = code --wait
   excludesfile = ~/.gitignore
@@ -13,8 +16,8 @@
 #   tool = vscode
 # [mergetool "vscode"]
 #   cmd = code --wait $MERGED
-# [diff]
-#   tool = vscode
+[diff]
+  tool = vscode
 [difftool "vscode"]
   cmd = code --wait --diff $LOCAL $REMOTE
 [color]
@@ -40,7 +43,8 @@
 [push]
   default = simple
 [status]
-  showUntrackedFiles = no
+  # showUntrackedFiles = no
+# Had to comment out the following to use spotless's year fetcher
 # [format]
 #   pretty = format:%C(yellow)%h %Cblue%>(12)%ad %Cgreen%<(7)%aN%Cred%d %Creset%s
 [diff "ansible-vault"]
@@ -50,7 +54,9 @@
   templatedir = ~/.dot/git_template
 [pull]
   rebase = false
-  # git pulll --rebase, --no-rebase, or --ff-only
+# git pull --rebase, --no-rebase, or --ff-only
+# NOTE: To override settings in this file such as the user, add a
+# ~/.gitconfig.local file with your extra settings
 [include]
   path = ~/.gitconfig.local
 [user]

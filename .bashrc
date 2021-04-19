@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
 
-function rcRollCall() { [[ $- == *i* ]] && echo "${@}"; }
-rcRollCall "~/.bashrc: bash settings"
+# TODO: REMOVE
+# If this is a non iteracive shell then echo should be disabled
+function status() {
+  [[ $- == *i* ]] && echo "${@}"
+}
+# status "~/.bashrc: bash settings"
 
 export BASH_SILENCE_DEPRECATION_WARNING=1
 
@@ -28,6 +32,8 @@ PROMPT_COMMAND=_bash_history_sync
 shopt -s histreedit
 ## edit a recalled history line before executing
 shopt -s histverify
+
+shopt -s extglob
 
 [[ $- == *i* ]] &&
   bind '"\e[A": history-search-backward' &&

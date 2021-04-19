@@ -41,17 +41,22 @@ autocmd BufNewFile,BufRead *.s set ft=masm
 "Don't turn tabs to spaces for makefiles
 autocmd FileType make setlocal noexpandtab
 autocmd FileType python nnoremap ,format :gggqG
+"autocmd FileType python nnoremap ,format :-1read $HOME/.bashrc
 "My color preferences for lecturing
 "highlight Search ctermbg=DarkMagenta ctermfg=cyan
 "highlight Comment ctermfg=LightBlue
 
-" File Browsing:
-let g:netrw_banner=0        " disable annoying banner
-let g:netrw_browse_split=4  " open in prior window
-let g:netrw_altv=1          " open splits to the right
-let g:netrw_liststyle=3     " tree view
-let g:netrw_list_hide=netrw_gitignore#Hide()
-let g:netrw_list_hide.=',\(^\|\s\s\)\zs\.\S\+'
+try
+  " File Browsing:
+  let g:netrw_banner=0        " disable annoying banner
+  let g:netrw_browse_split=4  " open in prior window
+  let g:netrw_altv=1          " open splits to the right
+  let g:netrw_liststyle=3     " tree view
+  let g:netrw_list_hide=netrw_gitignore#Hide()
+  let g:netrw_list_hide.=',\(^\|\s\s\)\zs\.\S\+'
+catch
+endtry
+
 set showcmd
 
 set hlsearch
@@ -60,12 +65,19 @@ set splitbelow
 set omnifunc=syntaxcomplete#Complete
 autocmd BufWritePre * :%s/\s\+$//e
 
+" install vim-plug if it isnt there
+if empty(glob('~/.vim/autoload/plug.vim'))
+  silent !curl -fLo ~/.vim/autoload/plug.vim --create-dirs
+    \ https://raw.githubusercontent.com/junegunn/vim-plug/master/plug.vim
+  autocmd VimEnter *   PlugInstall --sync | source $MYVIMRC
+endif
+
 """"" Plugins
 call plug#begin()
   Plug 'vim-scripts/CycleColor'
   Plug 'morhetz/gruvbox'
   Plug 'lifepillar/vim-mucomplete'
-"  Plug 'davidhalter/jedi-vim'
+  Plug 'davidhalter/jedi-vim'
 call plug#end()
 
 try
@@ -74,15 +86,15 @@ catch
     colorscheme desert
 endtry
 
-set backspace=indent,eol,start
+try
+  set completeopt-=preview
+  set completeopt+=longest,menuone,noselect
+  set shortmess+=c   " Shut off completion messages
+  set belloff+=ctrlg " If Vim beeps during completion
+  let g:mucomplete#enable_auto_at_startup = 1
+  let g:mucomplete#completion_delay = 1
+  set backspace=indent,eol,start
 
-set completeopt+=menuone
-set shortmess+=c   " Shut off completion messages
-set belloff+=ctrlg " If Vim beeps during completion
-let g:mucomplete#enable_auto_at_startup = 1
-let g:mucomplete#completion_delay = 1
-
-"set completeopt-=preview
-set completeopt+=longest,menuone,noselect
-"let g:jedi#popup_on_dot = 0  " It may be 1 as well
-let g:mucomplete#enable_auto_at_startup = 1
+  let g:jedi#popup_on_dot = 0
+catch
+endtry

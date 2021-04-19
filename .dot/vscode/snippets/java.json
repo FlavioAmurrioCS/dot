@@ -1,0 +1,17 @@
+{
+  "loggersnippet":{
+    "body": "private static final Logger LOGGER = LoggerFactory.getLogger(${TM_FILENAME_BASE}.class.getName());",
+    "prefix": "loggersnippet",
+    "description": "loggersnippet"
+  },
+  "bean":{
+    "body": [
+      "  @Bean",
+      "  public ${1} ${2:${1}}() {",
+      "    return new ${1}();",
+      "  }"
+    ],
+    "prefix": "bean",
+    "description": "bean"
+  }
+}

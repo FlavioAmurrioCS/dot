@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function port() {
+  help_arg_count_usage 1 "${FUNCNAME[0]:-port} <port> [-k]" "$@" && return 0
+  local port="${1}"
+  local pid="$(lsof -i ":${port}" | grep "LISTEN" | awk '{print $2}' | sort -u | grep -v PID)"
+  [ -z "${pid}" ] && msg --info "No process is using port ${port}." && return 0
+  ps aux | grep " ${pid} " | grep -v grep
+  [ "${2}" = "-k" ] && kill -9 ${pid} && msg --success "Port ${port} is now free."
+}
+
+port "${@}"

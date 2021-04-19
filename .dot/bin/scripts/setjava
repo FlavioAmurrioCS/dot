@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+# shellcheck source=./__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+find_args=(
+  -maxdepth 6
+  -type f
+  -name javac
+)
+
+onlyInMac && function findJavaHome() { find /Library/Java "${HOME}/.sw" "${find_args[@]}" -perm +111 2>/dev/null; }
+
+onlyInLinux && function findJavaHome() { find /usr/lib/jvm "$(cd /app 2>/dev/null && pwd -P)" "${HOME}" "${find_args[@]}" -executable 2>/dev/null; }
+
+function setjava() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-setjava} -> Change java version dynamically." "$@" && return 0
+  log_warning "Looking for existing java installations..."
+  local javahome
+  javahome=$(findJavaHome | grep -iv -e idea -e intellij | grep "/bin/" | sed 's|/bin.*||' | select_one) || return 1
+  ln -sfn "${javahome}" "${HOME}/.java_home"
+  log_success "Setting ${javahome} as JAVA_HOME."
+  "${HOME}/.java_home/bin/java" -version
+}
+
+setjava "${@}"

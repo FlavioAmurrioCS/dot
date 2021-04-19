@@ -1,0 +1,99 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function getHostFromHistoryFile() {
+  grep "^ssh " "${HISTFILE:-${HOME}/.bash_history}" | awk '{print $2}' | grep "BLANK.com$" | grep -v "{" | tr -d '"'
+}
+
+function getHostFromInventoryFiles() {
+  grep -h BLANK.com --exclude="*.*" --exclude="*/group_vars/*" --exclude="Pipfile" "${HOME}"/**/*ansible* -r |
+    tr "\"'@/" ' ' |
+    sed -e 's|BLANK.com.*|BLANK.com|g' |
+    rev |
+    awk '{print $1}' |
+    grep -v -e ":" |
+    rev
+}
+
+function getHostFromInventoryApi() {
+  local url="https://inventory.tools.BLANK.com/runsqlcsv?sql=select%20ad.hostname%0Afrom%20asset_data%20ad%0Awhere%20ad.os_version%20like%20%27RHEL%25%27"
+  cache_command curl -s -X GET "${url}" --insecure --connect-timeout 4 |
+    cut -d '"' -f2 |
+    grep "BLANK.com$"
+}
+
+function s() {
+  local usage="
+  USAGE: ${FUNCNAME[0]:-s} [options...] [host]
+
+  Combination of ssf, ssi, ssr and issh commands.
+  Allows you to ssh as any user right of the back.
+
+  Options:
+    -r                      Select from previously ssh host
+    -i                      Select from host in your ansible inventory files.
+    -f                      Select from inventory API.
+    -u --user <user_name>   ssh as the <user_name>
+    -rg                     ssh as the regadmin
+    -h --help               Show usage.
+"
+  local host
+  local remote_bashrc_file=${REMOTE_BASHRC_FILE:-${HOME}/.bashrc}
+  local printOnly='false'
+  while [[ "${1}" =~ ^- && ! "${1}" == "--" ]]; do
+    case ${1} in
+    -r)
+      host=$(getHostFromHistoryFile | select_one) || return 1
+      ;;
+    -i)
+      host=$(getHostFromInventoryFiles | select_one) || return 1
+      ;;
+    -f)
+      host=$(getHostFromInventoryApi | select_one) || return 1
+      ;;
+    -p)
+      printOnly='true'
+      ;;
+    -u | --user)
+      shift 1
+      user_name="${1}"
+      ;;
+    -rg)
+      user_name="regadmin"
+      ;;
+    *)
+      log_info "${usage}" && return 0
+      ;;
+    esac
+    shift
+  done
+  if [[ "$1" == '--' ]]; then shift; fi
+  local ssh_target
+  ssh_target=${host:-${1:-$({
+    getHostFromHistoryFile &
+    getHostFromInventoryFiles &
+    getHostFromInventoryApi &
+  } | select_one)}} || return 1
+
+  [ "${printOnly}" == 'true' ] && echo "${ssh_target}" && return 0
+  # Extras user name from host string if available.
+  # Will overide --user option
+  if [[ "${1}" == *"@"* ]]; then
+    read -r user_name ssh_target <<<"${ssh_target//@/ }"
+  fi
+
+  log_warning "ssh ${ssh_target}"
+  if [ -n "${user_name}" ]; then
+    ssh -t "${ssh_target}" "$(cat "${remote_bashrc_file}"); sudo su ${user_name}"
+  else
+    ssh -t "${ssh_target}" "$(cat "${remote_bashrc_file}"); bash"
+    # ssh "${ssh_target}" 'cat > /tmp/bashrc; bash --rcfile /tmp/bashrc -l' <"${HOME}/.bashrc"
+    # ssh "${ssh_target}" 'cat > /tmp/bashrc; bash' <"${HOME}/.bashrc"
+  fi
+}
+
+s "$@"

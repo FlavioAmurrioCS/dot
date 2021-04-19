@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+
+function docker() {
+  local proxy_host=${1:-${USER}.BLANK}
+  ssh -t vde "ssh -N -f -L localhost:23750:/var/run/docker.sock ${proxy_host} &&
+    export DOCKER_HOST=tcp://localhost:23750 && lazydocker"
+}
+
+docker "$@"

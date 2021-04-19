@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+red=$(tput setaf 1)
+normal=$(tput sgr0)
+
+error_message="${red}\
+INVALID COMMIT MSG: Commit message must mention a JIRA ticket or be a merge message.
+Here are some examples of valid commit messages:${normal}
+
+  CTLDPS-101: This is sample commit message.
+  GOV-103 required this commit.
+  Merge remote tracking origin/branch into master
+"
+
+COMMIT_HOOK_IGNORE="${COMMIT_HOOK_IGNORE:-${USER}}"
+
+git remote -v 2>/dev/null | grep -iqE "${COMMIT_HOOK_IGNORE}" && exit 0
+
+grep -iqE "[A-Z]{2,}-[0-9]{1,}.*|^Merge.*" "${1}" && exit 0
+
+branchPath=$(git symbolic-ref -q HEAD)
+branchName=${branchPath##*/}
+
+if echo "${branchName}" | grep -iqE "[A-Z]{2,}-[0-9]{1,}.*|^Merge.*"; then
+  tmp_file="$(mktemp)"
+  {
+    branchName=$(echo "${branchName}" | grep -oiE "[A-Z]{2,}-[0-9]{1,}" | tr '[:lower:]' '[:upper:]')
+    echo -n "${branchName}: "
+    grep -v "^#" "${1}"
+  } >"${tmp_file}"
+  cat "${tmp_file}" >"${1}"
+  rm "${tmp_file}"
+  exit 0
+fi
+
+echo -e "${error_message}"
+echo -e "BAD COMMIT MESSAGE: "
+grep -v "^#" "${1}"
+echo -e "TRY TO INCLUDE JIRA TICKET IN COMMIT MSG"
+
+exit 0

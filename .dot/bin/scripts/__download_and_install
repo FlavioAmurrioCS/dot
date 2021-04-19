@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+
+function download_and_install() {
+  ORIGINAL_DIR="$(pwd)"
+  FOLDER_NAME=${1}
+  DESTINATION="${SW_DIR}/${FOLDER_NAME}"
+  [ -d "${DESTINATION}" ] &&
+    return
+  URL="${!1}"
+  FILENAME=$(basename "${URL}")
+  dispblock "${FOLDER_NAME}: ${FILENAME}" &&
+    mkdir -p "${DOTTMP}" &&
+    cd "${DOTTMP}" &&
+    wget "${URL}" &&
+    (tar -xzf "${FILENAME}" || tar -xf "${FILENAME}" || unzip "${FILENAME}") &&
+    rm -rf "${FILENAME}" &&
+    mv "$(ls -d ./* | head -n 1)" foo &&
+    mv foo "${FOLDER_NAME}" &&
+    mv "${FOLDER_NAME}" "${SW_DIR}" &&
+    echo "Installed ${FOLDER_NAME} in ${DESTINATION} succesfully!"
+  cd "${ORIGINAL_DIR}" &&
+    rm -rf "${DOTTMP}"
+}
+
+download_and_install "${@}"
+
+
+function f_installer() {
+  [ "$#" -eq 2 ] || echo_error "Please pass in foldername and URL" || return 1
+  CURRENTDIR="${PWD}"
+  FOLDER_NAME="${1}"
+  DESTINATION="${SW_DIR}/${FOLDER_NAME}"
+  URL="${2}"
+  FILENAME="$(basename ${URL})"
+  [ -d "${DESTINATION}" ] && echo_warning "${FOLDER_NAME} already exists in ${SW_DIR}" && return 1
+  dispblock "Installing ${FILENAME} in ${SW_DIR}"
+  echo "FOLDER NAME : ${FOLDER_NAME}"
+  echo "DESTINATION : ${DESTINATION}"
+  echo "URL         : ${URL}"
+  echo "FILENAME    : ${FILENAME}"
+  mkdir -p "${DOTTMP}" &&
+    cd "${DOTTMP}" &&
+    curl -o "${FILENAME}" -L -# "${URL}" &&
+    (tar -xzf "${FILENAME}" || tar -xf "${FILENAME}" || unzip "${FILENAME}") &&
+    rm -rf "${FILENAME}" &&
+    BIN_FOLDER=$(dirname $(find . -depth -type d -name bin | head -n 1)) &&
+    RENAME_BIN_FOLDER="$(dirname ${BIN_FOLDER})/${FOLDER_NAME}" &&
+    mv "${BIN_FOLDER}" foo &&
+    mv foo ${RENAME_BIN_FOLDER} &&
+    mv "${RENAME_BIN_FOLDER}" "${SW_DIR}" &&
+    echo_good "Installed ${FILENAME} in ${DESTINATION} succesfully"
+  cd "${CURRENTDIR}" &&
+    rm -rf "${DOTTMP}"
+}
+
+function _python_installer() {
+  [ "$#" -eq 2 ] || echo_error "Please pass in foldername and URL" || return 1
+  CURRENTDIR="${PWD}"
+  FOLDER_NAME="${1}"
+  DESTINATION="${SW_DIR}/${FOLDER_NAME}"
+  URL="${2}"
+  FILENAME="$(basename ${URL})"
+  [ -d "${DESTINATION}" ] && echo_warning "${FOLDER_NAME} already exists in ${SW_DIR}" && return 1
+  dispblock "Installing ${FILENAME} in ${SW_DIR}"
+  echo "FOLDER NAME : ${FOLDER_NAME}"
+  echo "DESTINATION : ${DESTINATION}"
+  echo "URL         : ${URL}"
+  echo "FILENAME    : ${FILENAME}"
+  mkdir -p "${DOTTMP}" &&
+    cd "${DOTTMP}" &&
+    curl -o "${FILENAME}" -L -# "${URL}" &&
+    (tar -xzf "${FILENAME}" || tar -xf "${FILENAME}" || unzip "${FILENAME}") &&
+    rm -rf "${FILENAME}" &&
+    cd ./*ython* &&
+    ./configure --prefix="${DESTINATION}" &&
+    make &&
+    make altinstall &&
+    cd "${CURRENTDIR}" &&
+    rm -rf "${DOTTMP}" &&
+    dispblock "Upgrading/Installing: pip, virtualenvwrapper, pipenv" &&
+    PYTHON_BIN="$(find ${DESTINATION}/bin/ -name 'python*' | grep -v config)" &&
+    export VIRTUALENVWRAPPER_PYTHON="${PYTHON_BIN}"
+  ${PYTHON_BIN} -m pip install --upgrade pip virtualenvwrapper pipenv &&
+    source "${DESTINATION}/bin/virtualenvwrapper.sh" &&
+    mkvirtualenv spark -p "${PYTHON_BIN}"
+}

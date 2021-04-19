@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/cplusplus/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/csharp/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/java/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/javascript/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/python/intellisense-members-lstm/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/sql/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/xaml/intellisense-members/output/latest
+# https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/python/intellisense-members-lstm/output/latest
+languages=(
+  cplusplus
+  csharp
+  java
+  javascript
+  python
+  sql
+  xaml
+)
+
+json='
+{
+  "analyzerName": "intellisense-members-lstm",
+  "languageName": "python",
+  "identity": {
+    "modelId": "15708AE89896CA5DF1690433B7A8D93D28B7",
+    "outputId": "215F8B4FAB1F4663ABD624559FD205B9",
+    "modifiedTimeUtc": "2019-12-13T22:18:51.237Z"
+  },
+  "filePath": "/tmp/symlinks/vscodeModels/15708AE89896CA5DF1690433B7A8D93D28B7_215F8B4FAB1F4663ABD624559FD205B9",
+  "lastAccessTimeUtc": "2020-07-18T02:32:58.446Z"
+}'
+
+function foo() {
+  for language in "${languages[@]}"; do
+    curl --silent "https://prod.intellicode.vsengsaas.visualstudio.com/api/v1/model/common/${language}/intellisense-members/output/latest"
+    # | python -m json.tool
+  done
+
+}
+
+
+
+foo "$@"

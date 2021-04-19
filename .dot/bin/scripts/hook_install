@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function hook_install() {
+  help_arg_count_usage 1 "${FUNCNAME[0]:-hook_install} <repo_dir>" "$@" && return 0
+  local repo
+  repo="$(abspath "${1}")"
+  local dotgit="${repo}/.git"
+  [ ! -d "${dotgit}" ] && log_error "${repo} does not point to git project's home." && return 1
+  local hook_dir=${dotgit}/hooks
+  mkdir -p "${hook_dir}"
+  cd "${hook_dir}" || return 1
+  rm -rf "${hook_dir}/commit-msg" "${hook_dir}/prepare-commit-msg"
+  ln -sfn "${HOME}/.dot/git_template/hooks/commit-msg" "${hook_dir}/commit-msg" &&
+  ln -sfn "${HOME}/.dot/git_template/hooks/prepare-commit-msg" "${hook_dir}/prepare-commit-msg" &&
+  log_success "Git hooks installed!"
+}
+
+hook_install "${@}"
