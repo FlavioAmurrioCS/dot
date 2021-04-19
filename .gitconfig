@@ -4,7 +4,7 @@
 [core]
   # editor = code --wait
   excludesfile = ~/.gitignore
-  ignorecase = false
+  ignorecase = true
   attributesfile = ~/.gitattributes
 [alias]
   l = log --relative-date --decorate --graph --abbrev-commit
