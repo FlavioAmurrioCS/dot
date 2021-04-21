@@ -1,0 +1,55 @@
+tap "homebrew/bundle"
+tap "homebrew/cask"
+tap "homebrew/core"
+# Clone of cat(1) with syntax highlighting and Git integration
+brew "bat"
+# Distributed revision control system
+brew "git"
+# Network logon cracker which supports many services
+brew "hydra"
+# Menu-driven communications program
+brew "minicom"
+# Port scanning utility for large networks
+brew "nmap"
+# Manage multiple Node.js versions
+brew "nvm"
+# Development kit for the Java programming language
+brew "openjdk@11"
+# Tool Command Language
+brew "tcl-tk"
+# Interpreted, interactive, object-oriented programming language
+brew "python@3.9"
+# Readline wrapper: adds readline support to tools that lack it
+brew "rlwrap"
+# Lisp installer and launcher for major environments
+brew "roswell"
+# Steel Bank Common Lisp system
+brew "sbcl"
+# Vi 'workalike' with many additional features
+brew "vim"
+# Executes a program periodically, showing output fullscreen
+brew "watch"
+# Internet file retriever
+brew "wget"
+# Tool to flash OS images to SD cards & USB drives
+cask "balenaetcher"
+# Voice and text chat software
+cask "discord"
+# App to build and share containerized applications and microservices
+cask "docker"
+# Web browser
+cask "firefox"
+# PDF reader
+cask "foxitreader"
+# Web browser
+cask "google-chrome"
+# Terminal emulator as alternative to Apple's Terminal app
+cask "iterm2"
+# Move and resize windows using keyboard shortcuts or snap areas
+cask "rectangle"
+# Open-source code editor
+cask "visual-studio-code"
+# Multimedia player
+cask "vlc"
+# Video communication and virtual meeting platform
+cask "zoom"
