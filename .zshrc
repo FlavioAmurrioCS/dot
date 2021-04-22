@@ -108,13 +108,13 @@ plugins=(
 
 echo "~/.zshrc: zsh settings"
 
-source() {
-  if [ -z "$1" ]; then
-    builtin source "${HOME}/.zshrc"
-  else
-    builtin source "$@"
-  fi
-}
+# source() {
+#   if [ -z "$1" ]; then
+#     builtin source "${HOME}/.zshrc"
+#   else
+#     builtin source "$@"
+#   fi
+# }
 
 export DOT_HOME="${HOME}/.dot"
 

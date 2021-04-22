@@ -39,13 +39,13 @@ shopt -s extglob
   bind '"\e[A": history-search-backward' &&
   bind '"\e[B": history-search-forward'
 
-source() {
-  if [ -z "${1}" ]; then
-    builtin source "${HOME}/.bashrc"
-  else
-    builtin source "${@}"
-  fi
-}
+# source() {
+#   if [ -z "${1}" ]; then
+#     builtin source "${HOME}/.bashrc"
+#   else
+#     builtin source "${@}"
+#   fi
+# }
 
 export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\W/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/') \[\e[0m\]\$ "
 export DOT_HOME="${HOME}/.dot"
