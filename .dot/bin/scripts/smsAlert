@@ -1,0 +1,95 @@
+#!/usr/bin/env python3
+# import requests
+import base64
+import datetime
+import os
+import sys
+from urllib.parse import urlencode
+from urllib.request import Request, urlopen
+
+
+def base64Encode(txt):
+    message_bytes = txt.encode('utf-8')
+    return base64.b64encode(message_bytes).decode('utf-8')
+
+
+PHONE_NUMBER = os.getenv('PHONE_NUMBER')
+TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
+TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
+TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
+
+assert TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER and PHONE_NUMBER, \
+    'MUST DEFINE ENVIROMENTAL VARIABLES!'
+
+
+def send_sms(phone_number, msg):
+    TWILIO_BASIC_AUTH = f'Basic {base64Encode(TWILIO_ACCOUNT_SID + ":" + TWILIO_AUTH_TOKEN)}'
+    TWILIO_URL = f'https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json'
+
+    data = {
+        'To': phone_number,
+        'From': TWILIO_PHONE_NUMBER,
+        'Body': msg
+    }
+    data = urlencode(data).encode('utf-8')
+
+    headers = {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Authorization': TWILIO_BASIC_AUTH
+        }
+    req = Request(TWILIO_URL, headers=headers)
+    response = urlopen(req, data)
+    return response
+
+# def send_sms(self, phone_number, msg):
+#     phone_number = phone_number if \
+#         phone_number.startswith("+1") else \
+#         "+1" + phone_number
+
+#     data = {
+#         "To": phone_number,
+#         "From": self.from_number,
+#         "Body": '\n' + msg
+#     }
+
+#     response = requests.post(
+#         f'https://api.twilio.com/2010-04-01/Accounts/{self.sid}/Messages.json',
+#         auth=(self.sid, self.auth_token),
+#         data=data,
+#         headers={'Content-Type': 'application/x-www-form-urlencoded'})
+
+#     return f'Success: {phone_number}' if 200 <= response.status_code <= 300 else f'Failed: {phone_number}, {response.text}'
+
+
+def current_time_est():
+    class EST5EDT(datetime.tzinfo):
+
+        def utcoffset(self, dt):
+            return datetime.timedelta(hours=-5) + self.dst(dt)
+
+        def dst(self, dt):
+            d = datetime.datetime(dt.year, 3, 8)  # 2nd Sunday in March
+            self.dston = d + datetime.timedelta(days=6 - d.weekday())
+            d = datetime.datetime(dt.year, 11, 1)  # 1st Sunday in Nov
+            self.dstoff = d + datetime.timedelta(days=6 - d.weekday())
+            if self.dston <= dt.replace(tzinfo=None) < self.dstoff:
+                return datetime.timedelta(hours=1)
+            else:
+                return datetime.timedelta(0)
+
+        def tzname(self, dt):
+            return 'EST5EDT'
+
+    return datetime.datetime.now(tz=EST5EDT()).ctime()
+
+
+def main():
+    msg = ' '.join(sys.argv[1:]).strip()
+    if not msg:
+        print('Message is empty!')
+        msg = 'Task is done!'
+    send_sms(PHONE_NUMBER, msg)
+
+
+if __name__ == '__main__':
+    main()

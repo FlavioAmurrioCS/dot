@@ -191,6 +191,11 @@ function scptovde() {
   scp -r "${1}" vde:~/scp/
 }
 
+function withSms(){
+  "${@}"
+  smsAlert "'${*}' has completed!"
+}
+
 # =================================== source ===================================
 # shellcheck source=/dev/null
 [ -f "${HOME}/.local/bin/virtualenvwrapper_lazy.sh" ] &&
