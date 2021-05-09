@@ -53,7 +53,7 @@ function rmux() {
   local init='
     cat > ${HOME}/.rmux.tmux.conf
     export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
-    if ! command tmux -V 2>/dev/null | grep -q "tmux 3" 2>/dev/null; then
+    if ! command tmux -V 2>/dev/null | grep -q "tmux .*3" 2>/dev/null; then
       echo -e "\033[1;33mtmux3 not found. Attemping to install tmux..." 1>&2
       # if ! sudo -n echo >/dev/null 2>&1; then
         # sudo -n yum install -y https://BLANK/tmux-3.0a-1.el7.x86_64.rpm 1>&2
