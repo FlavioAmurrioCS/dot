@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+
+# shellcheck disable=SC2164
+function getBin() {
+    local github_user="${1}"
+    local project_name="${2}"
+    echo -e "\n============================ ${github_user}/${project_name} ============================================"
+    local bin_name=
+    local download_page="https://github.com/${github_user}/${project_name}/releases/latest"
+    local download_url
+    local filename
+    local temp_folder
+    local exec_file
+    local install_dir="${HOME}/.local/bin"
+    grep_opts=()
+    case "$(uname -m)" in
+    x86_64)
+        grep_opts+=(
+            -e "$(uname -m | tr '_' '-')"
+            -e "$(uname -m | tr '-' '_')"
+            -e "amd"
+        )
+        ;;
+    *)
+        echo -n
+        ;;
+    esac
+
+    download_url="https://github.com$(curl --silent -L "${download_page}" |
+        grep "/${github_user}/${project_name}/releases/download/" |
+        grep -i "$(uname -s)" |
+        grep "${grep_opts[@]}" |
+        cut -d '"' -f2 |
+        grep -vE "[a-zA-Z0-9].sha" |
+        sort -r |
+        head -n 1 |
+        fzf --select-1 --exit-0)" || return 1
+    filename=$(basename "${download_url}")
+    temp_folder=$(mktemp -d)
+    pushd "${temp_folder}" >/dev/null
+    echo "Downloading ${download_url}"
+    curl -L --silent -o "${filename}" "${download_url}"
+    tar xf "${filename}" >/dev/null 2>&1 || unzip "${filename}" >/dev/null 2>&1
+    exec_file="$(find . -type f -exec file {} \; |
+        grep -e "$(uname -m | tr '_' '-')" -e "$(uname -m | tr '-' '_')" -e executable |
+        grep -e executable |
+        cut -d':' -f1 |
+        fzf --select-1 --exit-0)" ||
+        exec_file="$(find . -type f -exec file {} \; |
+            grep -e "$(uname -m | tr '_' '-')" -e "$(uname -m | tr '-' '_')" -e executable |
+            cut -d':' -f1 |
+            fzf --select-1 --exit-0)" || return 1
+    mkdir -p "${install_dir}"
+    bin_name="$(basename "${exec_file}" |
+        tr '[:upper:]' '[:lower:]' |
+        sed -e 's|v[0-9].*||g' -e "s|$(uname -s | tr '[:upper:]' '[:lower:]').*||g" -e 's|[._-]$||g')"
+
+    echo "Installing: ${bin_name}"
+    mv "${exec_file}" "${install_dir}/${bin_name}"
+    chmod +x "${install_dir}/${bin_name}"
+    "${install_dir}/${bin_name}" --version
+    popd >/dev/null
+    rm -rf "${temp_folder}"
+}
+
+getBin "${@}"
+exit $?
+getBin sharkdp bat
+getBin BurntSushi ripgrep
+getBin direnv direnv
+getBin docker compose
+getBin junegunn fzf
+getBin hadolint hadolint
+getBin jesseduffield lazydocker
+getBin jesseduffield lazygit
+getBin jesseduffield lazynpm
+getBin sharkdp fd
+getBin koalaman shellcheck
+getBin mvdan sh
+getBin isacikgoz tldr
