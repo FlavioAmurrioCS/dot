@@ -65,16 +65,17 @@ function getBin() {
 
 getBin "${@}"
 exit $?
-getBin sharkdp bat
 getBin BurntSushi ripgrep
 getBin direnv direnv
 getBin docker compose
-getBin junegunn fzf
+getBin dundee gdu
 getBin hadolint hadolint
+getBin isacikgoz tldr
 getBin jesseduffield lazydocker
 getBin jesseduffield lazygit
 getBin jesseduffield lazynpm
-getBin sharkdp fd
+getBin junegunn fzf
 getBin koalaman shellcheck
 getBin mvdan sh
-getBin isacikgoz tldr
+getBin sharkdp bat
+getBin sharkdp fd
