@@ -1439,6 +1439,13 @@ function mux() {
   esac
 }
 
+function between-markers() {
+  # https://stackoverflow.com/questions/22183903/using-source-to-include-part-of-a-file-in-a-bash-script
+  local start="${1}" && shift 1
+  local end="${1}" && shift 1
+  awk "/${start}/{flag=1;next}/${end}/{flag=0}flag" "${@}"
+}
+
 ###############################################################################
 
 if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
