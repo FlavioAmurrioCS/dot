@@ -608,6 +608,339 @@ function rainbow_taste() {
 }
 
 # =================================== Utils ====================================
+# =================================== Utils ====================================
+# =================================== Utils ====================================
+
+function abspath() {
+  help_arg_count_usage 1 "${FUNCNAME[0]:-abspath} <file|directory>" "$@" && return 0
+  # generate absolute path from relative path
+  # $1     : relative filename
+  # return : absolute path
+  if [ -d "$1" ]; then
+    # dir
+    (
+      cd "${1}" &&
+        pwd
+    )
+  elif [ -f "$1" ]; then
+    # file
+    if [[ $1 == /* ]]; then
+      echo "$1"
+    elif [[ $1 == */* ]]; then
+      echo "$(
+        cd "${1%/*}" &&
+          pwd
+      )/${1##*/}"
+    else
+      echo "$(pwd)/$1"
+    fi
+  fi
+}
+
+function auniq() {
+  awk '!x[$0]++'
+}
+
+! command -v open >/dev/null 2>&1 && function open() {
+  echo "${*}"
+} && export -f open
+
+function bm() {
+  cat "${HOME}/bookmarks.txt" | awk '!a[$0]++' | fzf | awk '{print $1}' | xargs -I{} bash -c 'open {}'
+}
+
+function bibin() {
+  local bin_name="${1}"
+  local mac_name="${2}"
+  local linux_name="${3}"
+
+  local bin_path
+  bin_path="$(command -v "${bin_name}")"
+  if uname -s | grep -q Darwin; then
+    bin_path="${bin_path:-${mac_name}}"
+  else
+    bin_path="${bin_path:-${linux_name}}"
+  fi
+  "${bin_path}" "$@"
+}
+
+# function secret_code() {
+#   local code_path
+#   code_path=$(command -v code)
+#   if uname -s | grep -q Darwin; then
+#     code_path=${code_path:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}
+#   else
+#     code_path=${code_path:-vi}
+#   fi
+#   "${code_path}" "$@"
+# }
+
+bibin "code" "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "vi" "$@"
+
+function c-local() {
+  "${SCRIPT_HOME}/c" -l "${@}"
+}
+
+function clone() {
+  local git_url
+  git_url=$(__listGitProjects | select_one) || return 1
+  __localGitClone "${git_url}"
+}
+
+function port() {
+  help_arg_count_usage 1 "${FUNCNAME[0]:-port} <port> [-k]" "$@" && return 0
+  local port="${1}"
+  local pid="$(lsof -i ":${port}" | grep "LISTEN" | awk '{print $2}' | sort -u | grep -v PID)"
+  [ -z "${pid}" ] && msg --info "No process is using port ${port}." && return 0
+  ps aux | grep " ${pid} " | grep -v grep
+  [ "${2}" = "-k" ] && kill -9 ${pid} && msg --success "Port ${port} is now free."
+}
+
+function pserver() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-pserver} [port]" "$@" && return 0
+  local port="${1}"
+  [ -z "${port}" ] &&
+    log_warning "Generating port number based off current directory." &&
+    port="$(strToHashPort "$(basename "$(pwd)")")"
+  nohup python -m SimpleHTTPServer "${port}" &
+  log_success "http://localhost:${port}"
+}
+
+function retry() {
+  sleep_time="5"
+
+  while true; do
+    "$@" && exit 0
+    echo "Retrying '$*' after ${sleep_time} seconds..."
+    sleep "${sleep_time}"
+  done
+}
+
+function rmux() {
+  local host="${USER}.BLANK"
+  [[ -n ${1} && "${1}" != -* ]] && host="${1}" && shift 1
+  local usage="
+  ${FUNCNAME[0]:-rmux} [hostname]
+
+  Terminal multiplexer. It allows multiple sessions with windows, panes, and more.
+  More information: <https://github.com/tmux/tmux>.
+
+  Intro to tmux: https://www.hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/
+  Tmux Configuration: https://www.hamvocke.com/blog/a-guide-to-customizing-your-tmux-conf/
+
+    Split pane horizontally                   Create new window
+    Ctrl-a -                                  Ctrl-a c
+
+    Split pane vertically                     Switch between windows
+    Ctrl-a |                                  Ctrl-a p|n|<number> for previous
+
+    Change pane focus                         Rename window(prompt at bottom of screen)
+    Ctrl-a <arrow keys>                       Ctrl-a ,
+
+    Make pane go full screen/shrink           Detach from the current session
+    Ctrl-a z                                  Ctrl-a d
+
+    Resize pane or use mouse if enabled.      Kill the current session
+    Ctrl-a Ctrl-<arrow key>                   Ctrl-a :kill-session<Enter>
+
+    Close pane                                Help dialog
+    Ctrl-d or type 'exit -f'                  Ctrl-a ?
+
+    Ctrl-1 Esc 1-5    Arrange panes in one of the five preset layouts:
+                      even-horizontal, even-vertical, main-horizontal,
+                      main-vertical, or tiled.
+    "
+  help_arg_count_usage 0 "${usage}" "$@" && return 0
+  [ -n "${TMUX}" ] && {
+    log_warning "Should not open tmux inside tmux, ssh-ing instead."
+    ssh "${host}"
+    return
+  }
+  log_warning "Target host: ${host}"
+  # TODO: Decide on whether to install tmux globally on every box
+  # shellcheck disable=SC2016
+  local init='
+    cat > ${HOME}/.rmux.tmux.conf
+    export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
+    if ! command tmux -V 2>/dev/null | grep -q "tmux .*3" 2>/dev/null; then
+      echo -e "\033[1;33mtmux3 not found. Attemping to install tmux..." 1>&2
+      # if ! sudo -n echo >/dev/null 2>&1; then
+        # sudo -n yum install -y https://BLANK/tmux-3.0a-1.el7.x86_64.rpm 1>&2
+      # else
+        cd /tmp &&
+          { curl -s https://BLANK/tmux-3.0a-1.el7.x86_64.rpm | rpm2cpio - | cpio -idmv; } >/dev/null 2>&1 ||
+          exit 1
+          mkdir -p ~/.local/bin
+          cp /tmp/usr/bin/tmux ~/.local/bin
+          rm -rf /tmp/usr
+      # fi
+    fi
+    hash -r
+    tmux ls 2>/dev/null
+    echo "<create new session>"
+  '
+  local selection
+  export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+  selection="$(ssh "${ssh_options[@]}" "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | select_one)" || return 1
+
+  # shellcheck disable=SC2016
+  local tmux_cmd='
+    export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
+    tmux_conf="${HOME}/.rmux.tmux.conf"
+    [ -f "${HOME}/.tmux.conf" ] && tmux_conf="${HOME}/.tmux.conf"
+    tmux -f ${tmux_conf}'
+  case "${selection}" in
+  "<create new session>")
+    local new_sesssion_name
+    read -r -p "New Tmux Session Name: " new_sesssion_name
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' new-session -s '"${new_sesssion_name}"
+    ;;
+  *:*)
+    local session_name
+    session_name="$(echo "${selection}" | cut -d ":" -f1)"
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
+    ;;
+  *)
+    echo "WHAT HAPPENED! ${selection}"
+    ;;
+  esac
+}
+
+# TODO: SWITCH TO 127.0.0.1
+function tunnel() {
+  help_arg_count_usage 2 "${FUNCNAME[0]:-tunnel} <hostname> <remote_port> [local_port]" "$@" && return 0
+  local host=${1} &&
+    local remote_port=${2} &&
+    local local_port=${2} &&
+    [ "$#" -ge 3 ] && local_port=${3} || true &&
+    ssh -N -f -L "localhost:${local_port}:""localhost:${remote_port}" "${host}" &&
+    msg --success "Tunnel opened from ${host}:${remote_port} to localhost:${local_port}. (http://localhost:${local_port})"
+  # TODO: Merge tunnel and tunneldb
+  # ssh -N -f -L 1526:BLANK:1526 BLANK
+}
+
+# TODO: COMBINE THESE TWO
+function tunnel_kill() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-tunnel_kill} [port]" "$@" && return 0
+  local port="${1}"
+  { [ -n "${port}" ] && msg --info "Killing tunnel on port ${port}."; } ||
+    msg --info "Killing all tunnels."
+  # shellcheck disable=SC2009
+  ps aux | grep -E "ssh -N.*${port}" | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+  # shellcheck disable=SC2009
+  ps aux | grep -E "ssh.*mux" | grep -v grep | awk '{print $2}' | xargs kill 2>/dev/null
+}
+
+# TODO: Verify db host!
+dbHostList="\
+
+"
+
+function tunneldb() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-tunneldb} [hostname] [remote_port] [local_port]" "$@" && return 0
+
+  local host
+  local remote_port
+  local local_port
+
+  host=${1:-$(echo "${dbHostList}" | select_one)} || return 1
+  log_info "Target Host: ${host}"
+  # host=${1:-$(s -p)} || return 1
+  log_info -n "Verifying connections to '${host}'... " &&
+    ! ssh "${ssh_options[@]}" "${host}" 'exit 0' &&
+    log_error "FAILED" &&
+    return 1
+  log_info "OK"
+
+  ! remote_port=${2:-$(
+    log_info -n "Retrieving port from tnsnames.ora on host..."
+    ssh "${ssh_options[@]}" "${host}" 'grep PORT /app/oracle/product/**/db/network/admin/tnsnames.ora' | tr -d ' ' | grep -oE "PORT=[0-9]+" | sort -u | grep -oE -m 1 '[0-9]{4,6}' && log_info "OK"
+  )} &&
+    log_warning "FAILED" &&
+    return 1
+  log_info "Target remote port: ${remote_port}"
+
+  local_port=${3:-${remote_port}}
+  log_info "Target local port: ${local_port}"
+
+  # # shellcheck disable=SC2029
+  # ! ssh "${ssh_options[@]}" "${host}" "sudo lsof -i ':${port}' 2>/dev/null | grep -q LISTEN" &&
+  #   log_error "'${host}' doesn't seem to have db running on port '${port}'." &&
+  #   return 1
+
+  local inUse
+  if ! inUse=$(port "${local_port}" 2>/dev/null); then
+    if echo "${inUse}" | grep -v "${host}" | grep -q ssh; then
+      log_warning "Seems like another process/tunnel is using port ${local_port}. Killing all of them."
+      port "${local_port}" -k >/dev/null 2>&1
+    else
+      log_info "Seems like there is a tunnel already for '${host}:${remote_port}' mapped to 'localhost:${local_port}'"
+      return 0
+    fi
+  fi
+
+  append_to_history_no_exec tunneldb "${host}" "${remote_port}" "${local_port}"
+  log_info -n "Attempting to tunnel... "
+  {
+    # ssh "${ssh_options[@]}" -N -f -L "${local_port}:127.0.0.1:${remote_port}" "${host}" &&
+    ssh "${ssh_options[@]}" -N -f -L "${local_port}:${host}:${remote_port}" "${host}" &&
+      ! port "${local_port}" >/dev/null 2>&1 &&
+      log_success "DB tunnel opened from ${host}:${remote_port} to localhost:${local_port}"
+  } ||
+    log_error "Tunnel did not stay up.\nManually run 'ssh -vvvv -N -f -L ${local_port}:${host}:${remote_port} ${host}' to diagnose."
+}
+
+function ukill() {
+  help_arg_count_usage 1 "${FUNCNAME[0]:-port} <process_string>" "$@" && return 0
+  local pstring="${1}"
+  ps aux | grep "^${USER:0:7}" | grep -v -e grep -e "${FUNCNAME[0]}" | grep "${pstring}"
+  [ "${2}" = "-k" ] && ps aux | grep "^${USER:0:7}" | grep -v -e grep -e "${FUNCNAME[0]}" | grep "${pstring}" | awk '{print $2}' | xargs kill
+}
+
+function var_check() {
+  local var_ndef=""
+  for var in "$@"; do
+    [ "${!var// /}x" = 'x' ] && var_ndef="${var_ndef} ${var}"
+  done
+  [ -n "${var_ndef}" ] &&
+    msg --error "The following vars have not been defined:${var_ndef}" &&
+    return 1
+  return 0
+}
+
+# file_sync :: file -> src_dir -> dest_dir
+# TODO: Configure run on save to match project paths and use enviromental variables to map.
+function file_sync() {
+  local file="${1}"
+  local src_dir="${2}"
+  local dest_dir="${3}"
+  local relative="${file/$src_dir/}"
+
+  [ "$(find "${src_dir}" -name "$(basename "${file}")" | wc -l)" -eq "0" ] &&
+    echo "${file} is not in ${src_dir}. Please fix wildcard matching." &&
+    return 1
+
+  echo "\
+    ##############   DEBUG INFORMATION   ##############
+    FILE:     ${file}
+    SRC_DIR:  ${src_dir}
+    DEST_DIR: ${dest_dir}
+    RELATIVE: ${relative}
+
+    MOVING:   ${file}
+    TO:       ${dest_dir}/${relative}"
+  local final_parent_dir
+  final_parent_dir="$(dirname "${dest_dir}/${relative}")"
+  [ ! -d "${final_parent_dir}" ] &&
+    echo "'${final_parent_dir}' directory does not exist." &&
+    return 1
+  cp "$file" "${dest_dir}/${relative}" &&
+    echo "FILE TRANSFER SUCCESFUL!!!" ||
+    echo "COULD NOT TRANSFER FILE!!!"
+}
+
+# =================================== Utils ====================================
+# =================================== Utils ====================================
 
 function _helpArgCountUsage() {
   local min_args="${1}" && shift &&

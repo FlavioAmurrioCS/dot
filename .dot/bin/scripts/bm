@@ -1,7 +1,0 @@
-#!/usr/bin/env bash
-
-! command -v open >/dev/null 2>&1 && function open() {
-    echo "${*}"
-} && export -f open
-
-cat "${HOME}/bookmarks.txt" | awk '!a[$0]++' | fzf | awk '{print $1}' | xargs -I{} bash -c 'open {}'
