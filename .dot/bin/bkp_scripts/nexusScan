@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+
+function nexusScan() {
+  local USAGE="nexusScan <file_or_directory>"
+  [ $# -lt 1 ] && echo "${USAGE}" && return 1
+  [ ! -f "${1}" ] && echo "${USAGE}" && return 1
+  local nexusJarDownloadLink="https://BLANK/nexus-iq-cli-1.105.0-01.jar"
+  local nexusJar="${HOME}/.nexus-iq-cli.jar"
+  [ ! -f "${nexusJar}" ] &&
+    echo "Download nexus-ig.cli.jar" && curl -o "${nexusJar}" "${nexusJarDownloadLink}"
+
+  local username="${NEXUS_USER:-${USER}}"
+  local password
+  password="${NEXUS_PASSWORD:-$(read -r -s -p "Enter Nexus(mac) password: " temp && echo -n "${temp}")}" || return 1
+  echo
+
+  local stage="develop"
+  local applicationId="TMCH-dockerImages-downloader" # This is a dead project.
+  local nexusServer="https://nexusiq.com"
+
+  local cmd=(
+    java -jar "${nexusJar}"
+    --stage "${stage}"
+    --application-id "${applicationId}"
+    --server-url "${nexusServer}"
+    --result-file "./results.json"
+    --authentication "${username}":"${password}"
+    "${@}"
+  )
+
+  "${cmd[@]}"
+}
+
+nexusScan "${@}"

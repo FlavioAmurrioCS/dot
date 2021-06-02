@@ -1,0 +1,1333 @@
+#!/usr/bin/env bash
+#!/bin/bash -x
+# shellcheck disable=SC2120
+
+# ================================ source-start ================================
+function _color_log() {
+  # [30m 0: BLACK
+  # [31m 1: RED
+  # [32m 2: GREEN
+  # [33m 3: YELLOW
+  # [34m 4: BLUE
+  # [35m 5: MAGENTA
+  # [36m 6: CYAN
+  # [37m 7: WHITE
+  local color=${1} && shift
+  local options="-e"
+  [[ "${1}" == "-n" ]] && options+="n" && shift
+  echo "${options}" "${color}${*}\033[0m" 1>&2
+}
+function _log_info() { _color_log '\033[1;37m' "${@}"; }
+function _log_error() { _color_log '\033[1;31m' "${@}"; }
+function _log_success() { _color_log '\033[1;32m' "${@}"; }
+function _log_warning() { _color_log '\033[1;33m' "${@}"; }
+
+function __quiet() { "${@}" >/dev/null 2>&1; }
+function __echo_exec() { _log_warning "${*}" && "${@}"; }
+function __record() { echo "${*}" >>"${HISTFILE:-"${HOME}/.bash_history"}"; }
+function __record_exec() { __record "${@}" && __echo_exec "${@}"; }
+function __uniq_history() {
+  temp_file="$(mktemp)"
+  hist_file="${HISTFILE:-"${HOME}/.bash_history"}"
+  auniq "${hist_file}" >"${temp_file}"
+  mv "${temp_file}" "${hist_file}"
+}
+
+function __helpArgCountUsage() {
+  # local usage="${FUNCNAME[0]} <cmd> [args...]"
+  # __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local min_args="${1}" && shift &&
+    local usage="${1}" && shift
+  [[ "${1}" == "-h" || "${1}" == "--help" || "$#" -lt "${min_args}" ]] &&
+    _log_warning "USAGE: ${usage}" &&
+    return 0
+  return 1
+}
+function __varCheck() {
+  local silence="false"
+  [[ "${1}" == "-q" ]] && silence="true" && shift
+  local var_ndef=""
+  for var in "$@"; do
+    [ "${!var// /}x" = 'x' ] && var_ndef="${var_ndef} ${var}"
+  done
+  [ -n "${var_ndef}" ] && {
+    [[ "${silence}" == "false" ]] && _log_error "The following vars have not been defined: ${var_ndef}"
+    return 1
+  }
+  return 0
+}
+function __cmdCheck() {
+  local silence="false"
+  [[ "${1}" == "-q" ]] && silence="true" && shift
+  local cmd_ndef=""
+  for cmd in "$@"; do
+    ! command -v "${cmd}" >/dev/null 2>&1 && cmd_ndef="${cmd_ndef} ${cmd}"
+  done
+  [ -n "${cmd_ndef}" ] && {
+    [[ "${silence}" == "false" ]] && _log_error "The following cmd have not been defined: ${cmd_ndef}"
+    return 1
+  }
+  return 0
+}
+function __execCheck() {
+  local silence="false"
+  [[ "${1}" == "-q" ]] && silence="true" && shift
+  local cmd_ndef=""
+  for cmd in "$@"; do
+    ! __quiet which "${cmd}" && cmd_ndef="${cmd_ndef} ${cmd}"
+  done
+  [ -n "${cmd_ndef}" ] && {
+    [[ "${silence}" == "false" ]] && _log_error "The following executables have not been found in PATH: ${cmd_ndef}"
+    return 1
+  }
+  return 0
+}
+
+__default_ssh_options=(
+  "-oCompression=yes"
+  "-oControlMaster=auto"
+  "-oControlPersist=yes"
+  "-oForwardAgent=yes"
+  "-oGSSAPIAuthentication=yes"
+  "-oGSSAPIDelegateCredentials=yes"
+  "-oKeepAlive=yes"
+  "-oLogLevel=FATAL"
+  "-oServerAliveCountMax=6"
+  "-oServerAliveInterval=15"
+  "-oStrictHostKeyChecking=no"
+  "-oUserKnownHostsFile=/dev/null"
+)
+__quick_ssh_options=(
+  "${__default_ssh_options[@]}"
+  "-oControlPath=/tmp/%r@%h:%p"
+)
+
+function ssh() { command ssh -tq "${__quick_ssh_options[@]}" "${@}"; }
+function ssh_new() { command ssh -tq "${__default_ssh_options[@]}" "${@}"; }
+
+function bnr() { python -c "print(' ${*} '.center(78, '='))"; }
+function auniq() { awk '!x[$0]++' "${@}"; }
+function getCol() { awk '{print $'"${1}"'}'; }
+function grep() { command grep --color=auto --line-buffered "${@}"; }
+function _realpath() { python -c "import os; print(os.path.realpath('${1}'))"; }
+function open() { _log_info "open ${*}" && __execCheck -q open && command open "${@}"; }
+function md5sum() { if __execCheck -q md5sum; then command md5sum "${@}"; else command md5 "${@}"; fi; }
+function strToHash() { echo "${*}" | md5sum | tr -d 'abcdef0-' | grep -o ".........$"; }
+function strToHashPort() { echo "$(("$(strToHash "${*}")" % 64511 + 1023))"; }
+
+function clr() {
+  # Color       #define       Value       RGB
+  # black     COLOR_BLACK       0     0, 0, 0
+  # red       COLOR_RED         1     max,0,0
+  # green     COLOR_GREEN       2     0,max,0
+  # yellow    COLOR_YELLOW      3     max,max,0
+  # blue      COLOR_BLUE        4     0,0,max
+  # magenta   COLOR_MAGENTA     5     max,0,max
+  # cyan      COLOR_CYAN        6     0,max,max
+  # white     COLOR_WHITE       7     max,max,max
+  # https://stackoverflow.com/questions/5947742/how-to-change-the-output-color-of-echo-in-linux/20983251
+  # https://unix.stackexchange.com/questions/269077/tput-setaf-color-table-how-to-determine-color-codes
+
+  local mcolor
+  local mreset
+  local sed_cmd
+  local sed_args=()
+  local I_FLAG=""
+  mreset="$(tput sgr0)"
+  counter=-1
+
+  sed_cmd="$(which gsed || which sed)"
+
+  if __quiet "${sed_cmd}" --version; then
+    I_FLAG="I"
+  fi
+
+  for word in "${@}"; do
+    counter=$(((counter + 1) % 6))
+    mcolor="$(tput setaf $((counter + 1)))"
+    sed_args+=("-e" "s|\(${word}\)|${mcolor}\1${mreset}|g${I_FLAG}")
+  done
+
+  "${sed_cmd}" "${sed_args[@]}"
+}
+
+function grp() {
+  local grep_args=()
+
+  for word in "${@}"; do
+    grep_args+=("-e" "${word}")
+  done
+
+  grep -i "${grep_args[@]}"
+}
+
+function __selectOne() {
+  unset -f fzf
+  __cmdCheck -q fzf || function fzf() { _log_error "Install fzf!" && head -n 1; }
+  # TODO: Handle when fzf is not found
+  local selected
+  selected="$(auniq | fzf --select-1 --exit-0 "${@}")"
+  [ -z "${selected}" ] &&
+    _log_warning "Selection cancelled." &&
+    return 1
+  echo "${selected}" && return 0
+}
+# shellcheck disable=SC2009
+function port() {
+  local usage="${FUNCNAME[0]} <port> [-k]"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local port="${1}"
+  local pid
+  pid="$(lsof -i ":${port}" | getCol 2 | auniq | grep -v PID)"
+  [ -z "${pid}" ] && _log_warning "No process is using port ${port}." && return 0
+  ps aux | grep " ${pid} " | grep -v grep
+  [ "${2}" == "-k" ] && kill -9 "${pid}" && _log_success "Port ${port} is now free."
+}
+function tunnel() {
+  local usage="${FUNCNAME[0]} <hostname> <remote_port> [local_port]"
+  __helpArgCountUsage 2 "${usage}" "${@}" && return 0
+  local host="${1}"
+  local local_port="${2}"
+  local remote_port="${3:-${local_port}}"
+  __record_exec ssh -fNL "localhost:${local_port}:localhost:${remote_port}" "${host}" &&
+    _log_success "Tunnel opened from ${host}:${remote_port} to localhost:${local_port}. (http://localhost:${local_port})"
+  # TODO: SWITCH TO 127.0.0.1
+  # TODO: Merge tunnel and tunneldb
+  # ssh -N -f -L 1526:BLANK:1526 BLANK
+  # Add Kill option
+}
+
+function send-sms() {
+  local usage="${FUNCNAME[0]} <msg>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  _log_warning "${@}"
+
+  if __quiet __varCheck __START_TIME; then
+    local end_time
+    local start_time
+    local delta
+    end_time="$(date +%s)"
+    start_time="${__START_TIME}"
+    delta=$((end_time - start_time))
+
+    local min_time_in_seconds=60
+    if [[ "${delta}" -lt "${min_time_in_seconds}" ]]; then
+      return 0
+    fi
+  fi
+
+  __varCheck TWILIO_ACCOUNT_SID TWILIO_AUTH_TOKEN TWILIO_PHONE_NUMBER PHONE_NUMBER || return 1
+
+  curl -X POST "https://api.twilio.com/2010-04-01/Accounts/${TWILIO_ACCOUNT_SID}/Messages.json" \
+    --data-urlencode "Body=${*}" \
+    --data-urlencode "From=${TWILIO_PHONE_NUMBER}" \
+    --data-urlencode "To=+1${PHONE_NUMBER}" \
+    -u "${TWILIO_ACCOUNT_SID}:${TWILIO_AUTH_TOKEN}" >/dev/null 2>&1
+}
+function run-and-sms() {
+  local usage="${FUNCNAME[0]} <cmd> [args...]"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  start_time="$(date +%s)"
+  export __START_TIME="${start_time}"
+  # shellcheck disable=SC2154
+  trap 'exit_code=$?
+  end_time="$(date +%s)"
+  time_str="$(python -c "hours, remainder = divmod(${end_time} - ${start_time}, 3600); minutes, seconds = divmod(remainder, 60); print('"'"'{:02}h {:02}m {:02}s'"'"'.format(int(hours), int(minutes), int(seconds)))")"
+  msg_str="-
+
+command:   ${@}
+duration:  ${time_str}
+exit code: ${exit_code}"
+  send-sms "${msg_str}"' EXIT
+  "${@}"
+}
+
+function abspath() {
+  local usage="${FUNCNAME[0]} <file|directory>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  if [ -d "${1}" ]; then
+    (cd "${1}" && pwd)
+  elif [ -f "${1}" ]; then
+    if [[ "${1}" == /* ]]; then
+      echo "${1}"
+    elif [[ "${1}" == */* ]]; then
+      echo "$(cd "${1%/*}" && pwd)/${1##*/}"
+    else
+      echo "$(pwd)/${1}"
+    fi
+  fi
+  _log_error "${1} does not exist." && return 1
+}
+
+function retry() {
+  local sleep_time="${RETRY_SLEEP:-5}"
+
+  while true; do
+    "${@}" && return 0
+    _log_warning "Retrying '${*}' after ${sleep_time} seconds..."
+    sleep "${sleep_time}"
+  done
+}
+function pserver() {
+  local usage="${FUNCNAME[0]} [port]"
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+  local port
+  port="${1:-"$(strToHashPort "$(basename "$(pwd)")")"}"
+  nohup python -m SimpleHTTPServer "${port}" &
+  log_success "http://localhost:${port}"
+}
+
+function __is_exec_p() { [ -x "${1}" ] && echo "${1}"; }
+function __filter() { while read -r data; do "${@}" "${data}"; done; }
+function __filter_exec() { __filter __is_exec_p; }
+
+function installFromGithub() {
+  local usage="${FUNCNAME[0]} <username> <project_name>"
+  __helpArgCountUsage 2 "${usage}" "${@}" && return 0
+
+  local install_dir="${HOME}/.local/bin"
+  mkdir -p "${install_dir}"
+
+  local github_user="${1}"
+  local project_name="${2}"
+  _log_info "$(bnr "${github_user}/${project_name}")"
+  local bin_name
+  local download_page="https://github.com/${github_user}/${project_name}/releases/latest"
+  local download_url
+  local filename
+  local temp_folder
+  local exec_file
+  grep_opts=()
+  case "$(uname -m)" in
+  x86_64)
+    grep_opts+=(
+      -e "$(uname -m | tr '_' '-')"
+      -e "$(uname -m | tr '-' '_')"
+      -e "amd"
+    )
+    ;;
+  *)
+    echo -n
+    ;;
+  esac
+
+  download_url="https://github.com$(curl --silent -L "${download_page}" |
+    grep "/${github_user}/${project_name}/releases/download/" |
+    grep -i "$(uname -s)" |
+    grep "${grep_opts[@]}" |
+    cut -d '"' -f2 |
+    grep -vE "[a-zA-Z0-9].sha" |
+    sort -r |
+    head -n 1 |
+    __selectOne)" || return 1
+  filename=$(basename "${download_url}")
+  temp_folder=$(mktemp -d)
+
+  trap 'rm -rf "${temp_folder}"' EXIT
+  pushd "${temp_folder}" >/dev/null || return 0
+
+  _log_info "Downloading ${download_url}"
+  curl -L --silent -o "${filename}" "${download_url}"
+  tar xf "${filename}" >/dev/null 2>&1 || unzip "${filename}" >/dev/null 2>&1
+  # grep -e executable |
+
+  grep_ignore_cmd=(
+    grep -Eiv
+    -e "*.md$"
+    -e "*.fish$"
+    -e "*.ps1$"
+    -e "*.bash$"
+    -e "*.zsh$"
+    -e "LICENSE"
+    -e "COPYING"
+    -e "*.[0-1]+$"
+    -e "/doc/"
+    -e "complet"
+    -e ".tar"
+  )
+  exec_file="$(find . -type f -exec file {} \; |
+    grep -e "$(uname -m | tr '_' '-')" -e "$(uname -m | tr '-' '_')" -e executable |
+    cut -d':' -f1 |
+    "${grep_ignore_cmd[@]}" |
+    __selectOne)" || return 1
+  bin_name="$(basename "${exec_file}" |
+    tr '[:upper:]' '[:lower:]' |
+    sed -e 's|v[0-9].*||g' -e "s|$(uname -s | tr '[:upper:]' '[:lower:]').*||g" -e 's|[._-]$||g')"
+
+  _log_info "Installing: ${bin_name}"
+  mv "${exec_file}" "${install_dir}/${bin_name}"
+  chmod +x "${install_dir}/${bin_name}"
+  "${install_dir}/${bin_name}" --version
+  popd >/dev/null && return 0
+}
+
+function __installAllBin() {
+  installFromGithub junegunn fzf
+  installFromGithub BurntSushi ripgrep
+  installFromGithub direnv direnv
+  installFromGithub docker compose
+  installFromGithub dundee gdu
+  installFromGithub hadolint hadolint
+  installFromGithub isacikgoz tldr
+  installFromGithub jesseduffield lazydocker
+  installFromGithub jesseduffield lazygit
+  installFromGithub jesseduffield lazynpm
+  installFromGithub koalaman shellcheck
+  installFromGithub mvdan sh
+  installFromGithub sharkdp bat
+  installFromGithub sharkdp fd
+}
+
+function remote() {
+  local usage="${FUNCNAME[0]} [-h host] <function> [args...]"
+  local host="${CLOUD_DESKTOP}"
+  [ "${1}" == "-h" ] && shift 1 && host="${1}" && shift 1
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local remote_execute="
+    cat > /tmp/remote
+    chmod +x /tmp/remote
+    /tmp/remote ${*}
+  "
+  ssh "${host}" ''"${remote_execute}"'' <"${REAL_SCRIPT_FILE_PATH}"
+}
+
+function getLocalInfo() {
+  local usage="${FUNCNAME[0]} [-p]"
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+  REAL_HOME="${REAL_HOME:="$(_realpath "${HOME}")"}"
+  REAL_PROJECT_HOME="${REAL_PROJECT_HOME:="$(_realpath "${REAL_HOME}/projects")"}"
+  LOCAL_BIN="${LOCAL_BIN:="${REAL_HOME}/.local/bin"}"
+  export REAL_HOME REAL_PROJECT_HOME LOCAL_BIN
+  [[ ! "${PATH}" == *"${LOCAL_BIN}"* ]] &&
+    export PATH="${LOCAL_BIN}${PATH:+:${PATH}}"
+
+  mkdir -p "${REAL_PROJECT_HOME}"
+  mkdir -p "${LOCAL_BIN}"
+
+  [ "${1}" == "-p" ] && echo "${REAL_HOME} ${REAL_PROJECT_HOME} ${LOCAL_BIN} ${USER} $(hostname)"
+}
+
+function getRemoteInfo() {
+  local usage="${FUNCNAME[0]} [host]"
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+  local host="${1:-${CLOUD_DESKTOP}}"
+  ! ssh "${host}" echo -n && _log_error "Could not connect to ${host}." && return 1
+
+  if ! __varCheck -q REMOTE_REAL_HOME REMOTE_REAL_PROJECT_HOME REMOTE_LOCAL_BIN REMOTE_USER REMOTE_HOSTNAME; then
+    read -r REMOTE_REAL_HOME REMOTE_REAL_PROJECT_HOME REMOTE_LOCAL_BIN REMOTE_USER REMOTE_HOSTNAME <<<"$(remote -h "${host}" getLocalInfo -p)"
+  fi
+
+  export REMOTE_REAL_HOME REMOTE_REAL_PROJECT_HOME REMOTE_LOCAL_BIN REMOTE_USER REMOTE_HOSTNAME
+}
+
+function canConnect() {
+  local usage="${FUNCNAME[0]} <url>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  curl -s -m 2 "${1}" >/dev/null && return 0
+  _log_error "Cannot connect to ${1}" && return 1
+}
+
+function bm() {
+  local bookmark_file="${HOME}/bookmarks.txt"
+  [ ! -f "${bookmark_file}" ] && echo -e 'https://www.google.com\nhttps://stackoverflow.com/' >"${bookmark_file}"
+  local bookmark
+  bookmark=$(auniq "${bookmark_file}" | __selectOne) || return 1
+  open "$(echo "${bookmark}" | getCol 1)"
+}
+
+function ukill() {
+  local usage="${FUNCNAME[0]} <process_string>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local pstring="${1}"
+  ps aux | grep "^${USER:0:7}" | grep -v -e grep -e "${FUNCNAME[0]}" | grep "${pstring}"
+  [ "${2}" = "-k" ] && ps aux | grep "^${USER:0:7}" | grep -v -e grep -e "${FUNCNAME[0]}" | grep "${pstring}" | awk '{print $2}' | xargs kill
+}
+
+# function code() {
+#   echo "message"
+# }
+
+function f-edit() {
+  code "${REAL_SCRIPT_FILE_PATH}" 2>/dev/null || vim "${REAL_SCRIPT_FILE_PATH}"
+}
+
+# ================================= source-end =================================
+
+function __between-markers() {
+  # https://stackoverflow.com/questions/22183903/using-source-to-include-part-of-a-file-in-a-bash-script
+  local start="${1}" && shift 1
+  local end="${1}" && shift 1
+  awk "/${start}/{flag=1;next}/${end}/{flag=0}flag" "${@}"
+}
+
+function __getSourceable() {
+  __between-markers "$(bnr "source-start")" "$(bnr "source-end")" "${REAL_SCRIPT_FILE_PATH}"
+}
+
+################################################################################
+# https://linux.101hacks.com/ps1-examples/prompt-color-using-tput/
+# __TPUT_BLACK=0
+# __TPUT_RED=1
+# __TPUT_GREEN=2
+# __TPUT_YELLOW=3
+# __TPUT_BLUE=4
+# __TPUT_MAGENTA=5
+# __TPUT_CYAN=6
+# __TPUT_WHITE=7
+# _TPUT_FONT_BLACK="$(tput setaf ${__TPUT_BLACK})"
+# _TPUT_FONT_RED="$(tput setaf ${__TPUT_RED})"
+# _TPUT_FONT_GREEN="$(tput setaf ${__TPUT_GREEN})"
+# _TPUT_FONT_YELLOW="$(tput setaf ${__TPUT_YELLOW})"
+# _TPUT_FONT_BLUE="$(tput setaf ${__TPUT_BLUE})"
+# _TPUT_FONT_MAGENTA="$(tput setaf ${__TPUT_MAGENTA})"
+# _TPUT_FONT_CYAN="$(tput setaf ${__TPUT_CYAN})"
+# _TPUT_FONT_WHITE="$(tput setaf ${__TPUT_WHITE})"
+# _TPUT_BG_BLACK="$(tput setab ${__TPUT_BLACK})"
+# _TPUT_BG_RED="$(tput setab ${__TPUT_RED})"
+# _TPUT_BG_GREEN="$(tput setab ${__TPUT_GREEN})"
+# _TPUT_BG_YELLOW="$(tput setab ${__TPUT_YELLOW})"
+# _TPUT_BG_BLUE="$(tput setab ${__TPUT_BLUE})"
+# _TPUT_BG_MAGENTA="$(tput setab ${__TPUT_MAGENTA})"
+# _TPUT_BG_CYAN="$(tput setab ${__TPUT_CYAN})"
+# _TPUT_BG_WHITE="$(tput setab ${__TPUT_WHITE})"
+# _TPUT_BOLD="$(tput bold)"
+# _TPUT_DIM="$(tput dim)"
+# _TPUT_UNDERLINE_START="$(tput smul)"
+# _TPUT_UNDERLINE_END="$(tput rmul)"
+# _TPUT_REVERSE="$(tput rev)"
+# _TPUT_STANDOUT_START="$(tput smso)"
+# _TPUT_STANDOUT_END="$(tput rmso)"
+# _TPUT_RESET="$(tput sgr0)"
+
+# export __TPUT_BLACK __TPUT_RED __TPUT_GREEN __TPUT_YELLOW __TPUT_BLUE \
+#   __TPUT_MAGENTA __TPUT_CYAN __TPUT_WHITE _TPUT_FONT_BLACK _TPUT_FONT_RED \
+#   _TPUT_FONT_GREEN _TPUT_FONT_YELLOW _TPUT_FONT_BLUE _TPUT_FONT_MAGENTA \
+#   _TPUT_FONT_CYAN _TPUT_FONT_WHITE _TPUT_BG_BLACK _TPUT_BG_RED _TPUT_BG_GREEN \
+#   _TPUT_BG_YELLOW _TPUT_BG_BLUE _TPUT_BG_MAGENTA _TPUT_BG_CYAN _TPUT_BG_WHITE \
+#   _TPUT_BOLD _TPUT_DIM _TPUT_UNDERLINE_START _TPUT_UNDERLINE_END _TPUT_REVERSE \
+#   _TPUT_STANDOUT_START _TPUT_STANDOUT_END _TPUT_RESET
+function rainbow_taste() {
+  printf "\
+\033[0;30mcolor_black(\\\033[0;30m)
+\033[0;34mcolor_blue(\\\033[0;34m)
+\033[1;34mcolor_blue_light(\\\033[1;34m)
+\033[0;33mcolor_brown(\\\033[0;33m)
+\033[0;36mcolor_cyan(\\\033[0;36m)
+\033[1;36mcolor_cyan_light(\\\033[1;36m)
+\033[1;30mcolor_gray_dark(\\\033[1;30m)
+\033[0;37mcolor_gray_light(\\\033[0;37m)
+\033[0;32mcolor_green(\\\033[0;32m)
+\033[1;32mcolor_green_light(\\\033[1;32m)
+\033[0;35mcolor_purple(\\\033[0;35m)
+\033[1;35mcolor_purple_light(\\\033[1;35m)
+\033[0;31mcolor_red(\\\033[0;31m)
+\033[1;31mcolor_red_light(\\\033[1;31m)
+\033[1;37mcolor_white(\\\033[1;37m)
+\033[1;33mcolor_yellow(\\\033[1;33m)
+\033[0mcolor_reset(\\\033[0m)
+"
+}
+function color_log() {
+  local black="\033[0;30m"
+  local blue="\033[0;34m"
+  local blue_light="\033[1;34m"
+  local brown="\033[0;33m"
+  local cyan="\033[0;36m"
+  local cyan_light="\033[1;36m"
+  local gray_dark="\033[1;30m"
+  local gray_light="\033[0;37m"
+  local green="\033[0;32m"
+  local green_light="\033[1;32m"
+  local purple="\033[0;35m"
+  local purple_light="\033[1;35m"
+  local red="\033[0;31m"
+  local red_light="\033[1;31m"
+  local white="\033[1;37m"
+  local yellow="\033[1;33m"
+  local reset='\033[0m'
+
+  local usage="${FUNCNAME[0]} <color> [-n] <text>
+    ${black}black(\\\033[0;30m)
+    ${blue_light}blue_light(\\\033[1;34m)
+    ${blue}blue(\\\033[0;34m)
+    ${brown}brown(\\\033[0;33m)
+    ${cyan_light}cyan_light(\\\033[1;36m)
+    ${cyan}cyan(\\\033[0;36m)
+    ${gray_dark}gray_dark(\\\033[1;30m)
+    ${gray_light}gray_light(\\\033[0;37m)
+    ${green_light}green_light(\\\033[1;32m)
+    ${green}green(\\\033[0;32m)
+    ${purple_light}purple_light(\\\033[1;35m)
+    ${purple}purple(\\\033[0;35m)
+    ${red_light}red_light(\\\033[1;31m)
+    ${red}red(\\\033[0;31m)
+    ${reset}reset(\\\033[0m)
+    ${white}white(\\\033[1;37m)
+    ${yellow}yellow(\\\033[1;33m)
+  "
+  __helpArgCountUsage 2 "${usage}" "${@}" && return 0
+  local color="${yellow}"
+  checkVar "${1}" >/dev/null 2>&1 && color="${!1// /}" && shift
+  local options="-e"
+  [[ "${1}" == "-n" ]] && options+="n" && shift
+  echo "${options}" "${color}${*}\033[0m" 1>&2
+}
+
+# function log_error() { color_log red "${@}"; }
+# function log_info() { color_log white "${@}"; }
+# function log_success() { color_log green_light "${@}"; }
+# function log_warning() { color_log yellow "${@}"; }
+
+function tunneldb() {
+  # TODO: FIX THIS
+  local usage="${FUNCNAME[0]} [hostname] [remote_port] [local_port]"
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+
+  local host
+  local remote_port
+  local local_port
+
+  host=${1:-$(echo "${dbHostList}" | select_one)} || return 1
+  log_info "Target Host: ${host}"
+  # host=${1:-$(s -p)} || return 1
+  log_info -n "Verifying connections to '${host}'... " &&
+    ! _quick_ssh "${host}" 'exit 0' &&
+    log_error "FAILED" &&
+    return 1
+  log_info "OK"
+
+  ! remote_port=${2:-$(
+    log_info -n "Retrieving port from tnsnames.ora on host..."
+    _quick_ssh "${host}" 'grep PORT /app/oracle/product/**/db/network/admin/tnsnames.ora' | tr -d ' ' | grep -oE "PORT=[0-9]+" | sort -u | grep -oE -m 1 '[0-9]{4,6}' && log_info "OK"
+  )} &&
+    log_warning "FAILED" &&
+    return 1
+  log_info "Target remote port: ${remote_port}"
+
+  local_port=${3:-${remote_port}}
+  log_info "Target local port: ${local_port}"
+
+  # # shellcheck disable=SC2029
+  # ! _quick_ssh "${host}" "sudo lsof -i ':${port}' 2>/dev/null | grep -q LISTEN" &&
+  #   log_error "'${host}' doesn't seem to have db running on port '${port}'." &&
+  #   return 1
+
+  local inUse
+  if ! inUse=$(port "${local_port}" 2>/dev/null); then
+    if echo "${inUse}" | grep -v "${host}" | grep -q ssh; then
+      log_warning "Seems like another process/tunnel is using port ${local_port}. Killing all of them."
+      port "${local_port}" -k >/dev/null 2>&1
+    else
+      log_info "Seems like there is a tunnel already for '${host}:${remote_port}' mapped to 'localhost:${local_port}'"
+      return 0
+    fi
+  fi
+
+  append_to_history_no_exec tunneldb "${host}" "${remote_port}" "${local_port}"
+  log_info -n "Attempting to tunnel... "
+  {
+    # _quick_ssh -N -f -L "${local_port}:127.0.0.1:${remote_port}" "${host}" &&
+    _quick_ssh -N -f -L "${local_port}:${host}:${remote_port}" "${host}" &&
+      ! port "${local_port}" >/dev/null 2>&1 &&
+      log_success "DB tunnel opened from ${host}:${remote_port} to localhost:${local_port}"
+  } ||
+    log_error "Tunnel did not stay up.\nManually run 'ssh -vvvv -N -f -L ${local_port}:${host}:${remote_port} ${host}' to diagnose."
+}
+
+################################################################################
+function rmux() {
+  local host="${1:-${CLOUD_DESKTOP:-${DEV_HOST:-vdi}}}"
+  local usage="
+  ${FUNCNAME[0]} [hostname]
+
+  Terminal multiplexer. It allows multiple sessions with windows, panes, and more.
+  More information: <https://github.com/tmux/tmux>.
+
+  Intro to tmux: https://www.hamvocke.com/blog/a-quick-and-easy-guide-to-tmux/
+  Tmux Configuration: https://www.hamvocke.com/blog/a-guide-to-customizing-your-tmux-conf/
+
+    Split pane horizontally                   Create new window
+    Ctrl-a -                                  Ctrl-a c
+
+    Split pane vertically                     Switch between windows
+    Ctrl-a |                                  Ctrl-a p|n|<number> for previous
+
+    Change pane focus                         Rename window(prompt at bottom of screen)
+    Ctrl-a <arrow keys>                       Ctrl-a ,
+
+    Make pane go full screen/shrink           Detach from the current session
+    Ctrl-a z                                  Ctrl-a d
+
+    Resize pane or use mouse if enabled.      Kill the current session
+    Ctrl-a Ctrl-<arrow key>                   Ctrl-a :kill-session<Enter>
+
+    Close pane                                Help dialog
+    Ctrl-d or type 'exit -f'                  Ctrl-a ?
+
+    Ctrl-1 Esc 1-5    Arrange panes in one of the five preset layouts:
+                      even-horizontal, even-vertical, main-horizontal,
+                      main-vertical, or tiled.
+    "
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+  [ -n "${TMUX}" ] && {
+    log_warning "Should not open tmux inside tmux, ssh-ing instead."
+    ssh "${host}"
+    return
+  }
+  log_warning "Target host: ${host}"
+  # TODO: Decide on whether to install tmux globally on every box
+  # shellcheck disable=SC2016
+  local init='
+    cat > ${HOME}/.rmux.tmux.conf
+    export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
+    if ! command tmux -V 2>/dev/null | grep -q "tmux .*3" 2>/dev/null; then
+      echo -e "\033[1;33mtmux3 not found. Attemping to install tmux..." 1>&2
+      # if ! sudo -n echo >/dev/null 2>&1; then
+        # sudo -n yum install -y https://BLANK/tmux-3.0a-1.el7.x86_64.rpm 1>&2
+      # else
+        cd /tmp &&
+          { curl -s https://BLANK/tmux-3.0a-1.el7.x86_64.rpm | rpm2cpio - | cpio -idmv; } >/dev/null 2>&1 ||
+          exit 1
+          mkdir -p ~/.local/bin
+          cp /tmp/usr/bin/tmux ~/.local/bin
+          rm -rf /tmp/usr
+      # fi
+    fi
+    hash -r
+    tmux ls 2>/dev/null
+    echo "<create new session>"
+  '
+  local selection
+  export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+  selection="$(ssh "${ssh_options[@]}" "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | select_one)" || return 1
+
+  # shellcheck disable=SC2016
+  local tmux_cmd='
+    export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
+    tmux_conf="${HOME}/.rmux.tmux.conf"
+    [ -f "${HOME}/.tmux.conf" ] && tmux_conf="${HOME}/.tmux.conf"
+    tmux -f ${tmux_conf}'
+  case "${selection}" in
+  "<create new session>")
+    local new_sesssion_name
+    read -r -p "New Tmux Session Name: " new_sesssion_name
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' new-session -s '"${new_sesssion_name}"
+    ;;
+  *:*)
+    local session_name
+    session_name="$(echo "${selection}" | cut -d ":" -f1)"
+    ssh -S none -t "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
+    ;;
+  *)
+    echo "WHAT HAPPENED! ${selection}"
+    ;;
+  esac
+}
+
+function mux() {
+  [ -n "${TMUX}" ] && {
+    log_warning "Should not open tmux inside tmux, ssh-ing instead."
+    return
+  }
+
+  local selection
+  export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+  selection="$({
+    command tmux ls 2>/dev/null
+    echo "<create new session>"
+  } | select_one)" || return 1
+
+  case "${selection}" in
+  "<create new session>")
+    local new_sesssion_name
+    read -r -p "New Tmux Session Name: " new_sesssion_name
+    command tmux new-session -s "${new_sesssion_name}"
+    ;;
+  *:*)
+    local session_name
+    session_name="$(echo "${selection}" | cut -d ":" -f1)"
+    command tmux attach-session -t "${session_name}"
+    ;;
+  *)
+    echo "WHAT HAPPENED! ${selection}"
+    ;;
+  esac
+}
+
+################################################################################
+
+################################################################################
+
+# =================================== vscode ===================================
+
+function __selectRemoteFolder() {
+  local usage="${FUNCNAME[0]} <host> <remote_folder>"
+  __helpArgCountUsage 2 "${usage}" "${@}" && return 0
+  local host="${1}"
+  local destination="${2}"
+  remote_command="find ${destination} -maxdepth 1 -type d -follow"
+  ssh "${ssh_options[@]}" "${host}" ''"${remote_command}"'' 2>/dev/null | select_one || return 1
+}
+
+function __selectLocalFolder() {
+  local usage="${FUNCNAME[0]} <folder>"
+  __helpArgCountUsage 2 "${usage}" "${@}" && return 0
+  destination="${1}"
+  find "${destination}" -maxdepth 1 -type d | select_one || return 1
+}
+
+function __selectHostFromInventoryApi() {
+  local url="https://BLANK/runsqlcsv?sql=select%20ad.hostname%0Afrom%20asset_data%20ad%0Awhere%20ad.os_version%20like%20%27RHEL%25%27"
+  cache_command curl -s -X GET "${url}" --insecure |
+    cut -d '"' -f2 |
+    grep "BLANK$" |
+    select_one || return 1
+}
+
+# TODO: Remote dot clone
+function __remoteGitClone() {
+  local host="${1}"
+  local git_ssh_url="${2}"
+  local folder
+  folder=$(echo "${git_ssh_url}" | cut -d '/' -f2 | cut -d '.' -f1)
+
+  # shellcheck disable=SC2016
+  local remote_command='
+  ! command -v git >/dev/null 2>&1 &&
+    echo "Git not found. Installing Git..." 1>&2 &&
+    sudo yum install -y git vim tmux 1>&2 &&
+    ssh-keyscan BLANK >>~/.ssh/known_hosts 1>&2
+  [ ! -d ~/projects ] && mkdir -p ~/projects
+  project_home="$(readlink -f ~/projects)/'"${folder}"'"
+  [ ! -d "${project_home}" ] && { git clone '"${git_ssh_url}"' "${project_home}" --recursive 1>&2 || { echo "Error Clonning '"${git_ssh_url}"'" 1>&2 && exit 1; }; }
+  echo "${project_home}"'
+
+  # shellcheck disable=SC2029
+  ssh "${ssh_options[@]}" -q "${host}" "${remote_command}"
+}
+
+function __localGitClone() {
+  local git_ssh_url="${1}"
+  local folder
+  folder=$(echo "${git_ssh_url}" | cut -d '/' -f2 | cut -d '.' -f1)
+
+  [ ! -d ~/projects ] && mkdir -p ~/projects
+
+  local project_home=~/projects/${folder}
+  [ ! -d "${project_home}" ] &&
+    { git clone "${git_ssh_url}" "${project_home}" --recursive || { log_warning "Error Cloning ${git_ssh_url}" && return 1; }; }
+  echo "${project_home}"
+}
+
+function __getGitHubToken() {
+  local github_token
+  github_token=$(grep "^export GITHUB_TOKEN=" ~/.localrc ~/.bashrc ~/.zshrc 2>/dev/null | head -1 | cut -d '=' -f2 | tr -d '"')
+  [ -n "${github_token}" ] && echo "${github_token}" && return 0
+
+  log_warning "No GITHUB_TOKEN detected in ~/.localrc ~/.bashrc ~/.zshrc or env. Let's get one!"
+
+  local github_user="${USER}"
+  if echo "${USER}" | grep -qE "deploy|root|regadmin"; then
+    read -r -p "Enter github username(default: ${USER}): " github_user
+  fi
+
+  local github_password
+  read -r -s -p "Enter github password for ${github_user}: " github_password
+
+  log_info "\nRequesting GITHUB_TOKEN..."
+  github_token=$(curl -s -u "${github_user}:${github_password}" -X POST https://BLANK/api/v3/authorizations \
+    --data '{"scopes":["repo","user","write:discussion"],"note": "vscode-setup'"${RANDOM}"'"}' |
+    grep '"token"' |
+    cut -d '"' -f4)
+  [ -z "${github_token}" ] && log_error "Could not get GITHUB_TOKEN, check github password!" && return 1
+
+  log_success "Adding GITHUB_TOKEN to ~/.localrc!"
+  echo 'export GITHUB_TOKEN="'"${github_token}"'"' >>~/.localrc
+  echo "${github_token}"
+}
+
+function __listGitProjects() {
+  # Make sure the following are set: GITHUB_TOKEN GITHUB_ORGS GITHUB_USERS
+  # For ORGS and USERS one can list many in a space separated manner
+  # TODO: Switch array for GITHUB_ORGS and GITHUB_USERS.
+  # TODO: Save the output to a file for caching.
+  local github_orgs=${GITHUB_ORGS:-BLANK}
+  local github_users=${GITHUB_USERS:-${USER} famurriomoya}
+  local github_token
+  github_token=${GITHUB_TOKEN:-$(__getGitHubToken)} || return 1
+  {
+    for i in $(echo "${github_orgs}" | tr ' ' '\n' | sort -u); do
+      curl -s -H "Authorization: token ${github_token}" "https://BLANK/api/v3/orgs/${i}/repos?per_page=999" ||
+        { log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
+    done
+    for j in $(echo "${github_users}" | tr ' ' '\n' | sort -u); do
+      curl -s -H "Authorization: token ${github_token}" "https://BLANK/api/v3/users/${j}/repos?per_page=999" ||
+        { log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
+    done
+  } | grep "ssh_url" | cut -d '"' -f4
+}
+
+function addRepo() {
+  local url
+  for url in "${@}"; do
+    local label
+    label=$(echo "${url}" | rev | cut -d "/" -f1-2 | rev | tr '[:lower:]' '[:upper:]' | tr '/_' '-')
+    local block="[${label}]
+name=${label}
+baseurl=${url}
+enabled=1
+gpgcheck=0
+priority=40
+"
+    if ! grep -q "${url}" /etc/yum.repos.d/ -rl; then
+      {
+        echo "${block}"
+        # case "${label}" in
+        # *CENTOS*)
+        #   isCentos && echo "${block}"
+        #   ;;
+        # *RHEL*)
+        #   isRedHat && echo "${block}"
+        #   ;;
+        # *)
+        #   echo "${block}"
+        #   ;;
+        # esac
+      } | sudo tee -a /etc/yum.repos.d/setup.repo
+    else
+      echo "${url} is already here."
+    fi
+  done
+}
+
+function wasFileModifiedToday() {
+  local usage="${FUNCNAME[0]} <file>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  [ ! -f "${1}" ] && return 0
+  local python_cmd
+  local file_date
+  # shellcheck disable=SC2012
+  file_date="$(date +"%Y") $(ls -ltr "${1}" | tail -n 1 | rev | awk '{print $2,$3,$4}' | rev)"
+  python_cmd="from datetime import datetime, timedelta
+yesterday = datetime.now() - timedelta(days=1)
+if datetime.strptime('${file_date}', '%Y %b %d %H:%M') > yesterday:
+  exit(0)
+exit(1)
+"
+  python -c "${python_cmd}"
+}
+
+function remoteDotUpdate() {
+  local usage="${FUNCNAME[0]} <host>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local host=${1}
+  # shellcheck disable=SC2016
+  local remote_cmd='
+  [ ! -d "${HOME}/.cfg/" ] && {
+    git clone --bare git@BLANK:famurriomoya/dot.git "${HOME}/.cfg"
+    if git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}" checkout; then
+      echo "Checked out config."
+    else
+      echo "Backing up pre-existing dot files."
+      mkdir -p ~/.config-backup
+      git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}" checkout 2>&1 | grep -E "\s+\." | awk '\''{print $1}'\'' | xargs -I{} mv {} ~/.config-backup/{}
+      git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}" checkout
+    fi
+  }
+  git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}" pull
+  git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}" config --local status.showUntrackedFiles no
+  '
+
+  ssh "${ssh_options[@]}" "${host}" ''"${remote_cmd}"''
+}
+
+# =================================== Utils ====================================
+# =================================== Utils ====================================
+# =================================== Utils ====================================
+
+function bibin() {
+  local bin_name="${1}"
+  local mac_name="${2}"
+  local linux_name="${3}"
+
+  local bin_path
+  bin_path="$(command -v "${bin_name}")"
+  if uname -s | grep -q Darwin; then
+    bin_path="${bin_path:-${mac_name}}"
+  else
+    bin_path="${bin_path:-${linux_name}}"
+  fi
+  "${bin_path}" "$@"
+}
+
+# function secret_code() {
+#   local code_path
+#   code_path=$(command -v code)
+#   if uname -s | grep -q Darwin; then
+#     code_path=${code_path:-/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code}
+#   else
+#     code_path=${code_path:-vi}
+#   fi
+#   "${code_path}" "$@"
+# }
+
+# bibin "code" "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" "vi" "$@"
+
+function c-local() {
+  "${SCRIPT_HOME}/c" -l "${@}"
+}
+
+function clone() {
+  local git_url
+  git_url=$(__listGitProjects | select_one) || return 1
+  __localGitClone "${git_url}"
+}
+
+# TODO: Verify db host!
+dbHostList="\
+
+"
+
+# file_sync :: file -> src_dir -> dest_dir
+# TODO: Configure run on save to match project paths and use enviromental variables to map.
+function file_sync() {
+  local file="${1}"
+  local src_dir="${2}"
+  local dest_dir="${3}"
+  local relative="${file/$src_dir/}"
+
+  [ "$(find "${src_dir}" -name "$(basename "${file}")" | wc -l)" -eq "0" ] &&
+    echo "${file} is not in ${src_dir}. Please fix wildcard matching." &&
+    return 1
+
+  echo "\
+    ##############   DEBUG INFORMATION   ##############
+    FILE:     ${file}
+    SRC_DIR:  ${src_dir}
+    DEST_DIR: ${dest_dir}
+    RELATIVE: ${relative}
+
+    MOVING:   ${file}
+    TO:       ${dest_dir}/${relative}"
+  local final_parent_dir
+  final_parent_dir="$(dirname "${dest_dir}/${relative}")"
+  [ ! -d "${final_parent_dir}" ] &&
+    echo "'${final_parent_dir}' directory does not exist." &&
+    return 1
+  cp "$file" "${dest_dir}/${relative}" &&
+    echo "FILE TRANSFER SUCCESFUL!!!" ||
+    echo "COULD NOT TRANSFER FILE!!!"
+}
+
+# =================================== Utils ====================================
+# =================================== Utils ====================================
+
+# =============================== Exported Tools ===============================
+
+function f_install() {
+  # TODO: Create proper naming convention for function to distinghuished what to install
+  # https://unix.stackexchange.com/questions/260627/how-do-you-list-all-functions-and-aliases-in-a-specific-script
+  # echo ===============
+  # declare -F
+  # echo ===============
+  # declare -F | awk '{print $NF}'
+  # echo ===============
+  # declare -F | awk '{print $NF}' | sort | grep -v "^_"
+  # echo ===============
+  local install_dir="${HOME}/.local/bin"
+  mkdir -p "${install_dir}"
+  for func in "${EXPORT_FUNCTIONS[@]}"; do
+    echo "Installing ${func}..."
+    ln -sfn "${REAL_SCRIPT_FILE_PATH}" "${install_dir}/${func}"
+  done
+}
+
+function f_sync() {
+  bnr "Starting rsync"
+  rsync -azvhLP "${remotehost}:${RSYNC_FILES[*]}" . || return 1
+}
+
+function gato-logcat() {
+  local targets=(
+    'timestamp='
+    "${@}"
+  )
+
+  local timestamp
+  timestamp="$(date -u +"%Y-%m-%dT%H:%M:%S%Z")"
+  local logcat_home="/tmp"
+  local unfiltered_filename="${logcat_home}/${timestamp}.unfiltered.log"
+  local filtered_filename="${logcat_home}/${timestamp}.filtered.log"
+
+  _log_warning "File Created : ${unfiltered_filename}"
+  _log_warning "File Created : ${filtered_filename}"
+
+  # shellcheck disable=SC2064
+  trap "echo ; _log_warning File Created : ${unfiltered_filename} ; _log_warning File Created : ${filtered_filename}" EXIT
+
+  tee "${unfiltered_filename}" | grp "${targets[@]}" | tee "${filtered_filename}" | clr "${targets[@]}"
+}
+
+# shellcheck disable=SC2120
+# shellcheck disable=SC2009
+function gato-adb() {
+  _var_check CLOUD_DESKTOP_PLATFORM_TOOLS PLATFORM_TOOLS
+  uname -s | grep Linux -q && _log_error "Can only be ran from local machine." && return 1
+  local host="${1:-${CLOUD_DESKTOP}}"
+  ! _quick_ssh "${host}" hostname && _log_error "Cannot connect to ${host}." && return 1
+
+  ! ps aux | grep -v grep | grep -q -- '-fNXCR 5037:localhost:5037 ' && _ssh -fNXCR 5037:localhost:5037 "${host}"
+  ! ps aux | grep -v grep | grep -q -- '-fNXCR 12345:localhost:12345 ' && _ssh -fNXCR 12345:localhost:12345 "${host}"
+
+  lsof -i ":5037"
+  lsof -i ":12345"
+}
+
+# fzf -m --bind ctrl-a:select-all,ctrl-d:deselect-all,ctrl-t:toggle-all -q '!ptest ' |
+
+# rsync -azvhP "${CLOUD_DESKTOP_gato_HOME}"/build/tmp/work/checkers-poky-linux-gnueabi/multimodal-image-minimal/1.0-r0/rootfs*/* "${debugfs_path}"
+
+git_template_msg="\
+
+"
+function prepare-commit-msg() {
+  echo "${git_template_msg}$(cat "${1}" 2>/dev/null)" >"${1}"
+}
+
+function commit-msg() {
+  local exit_code=0
+  if grep -q "_PLACEHOLDER>" "${1}"; then
+    exit_code=$((exit_code + 1))
+    _log_error "- Remove/replace the <*_PLACEHOLDER> placeholders."
+  fi
+
+  ! grep -q "^\[Problem\]$" "${1}" && {
+    exit_code=$((exit_code + 1))
+    _log_error "- Missing [Problem] section."
+  }
+  ! grep -q "^\[Test\]$" "${1}" && {
+    exit_code=$((exit_code + 1))
+    _log_error "- Missing [Test] section."
+  }
+  ! grep -q "^Jira: " "${1}" && {
+    exit_code=$((exit_code + 1))
+    _log_error "- Missing 'Jira:' section."
+  }
+
+  if [[ $(grep -v -e "_PLACEHOLDER>" -e "^#" "${1}" | wc -w) -lt 4 ]]; then
+    exit_code=$((exit_code + 1))
+    _log_error "- Not enough information"
+  fi
+
+  if [[ "${exit_code}" != 0 ]]; then
+    _log_warning "$(bnr "Commit Message")"
+    _log_info "$(grep -v "^#" "${1}" 2>/dev/null)"
+    _log_warning "More info: "
+    return "${exit_code}"
+  fi
+  return 0
+}
+
+# shellcheck disable=SC2015
+function hook_install() {
+  local usage="${FUNCNAME[0]} <repo_dir>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  local repo
+  repo="$(_realpath "${1}")"
+  local dotgit="${repo}/.git"
+  [ ! -d "${dotgit}" ] && _log_error "${repo} does not point to git project's home." && return 1
+  local hook_dir=${dotgit}/hooks
+  mkdir -p "${hook_dir}"
+  cd "${hook_dir}" || return 1
+  rm -rf "${hook_dir}/commit-msg" "${hook_dir}/prepare-commit-msg"
+  ln -sfn "${REAL_SCRIPT_FILE_PATH}" "${hook_dir}/commit-msg" &&
+    ln -sfn "${REAL_SCRIPT_FILE_PATH}" "${hook_dir}/prepare-commit-msg" &&
+    _log_success "Git hooks installed!" || _log_error "git hook install failed."
+}
+
+function augment_project() {
+  local folder
+  ! folder="$(cd "${1}" && git rev-parse --show-toplevel)" && _log_error "'${1}' is not a git project." && return 1
+  bnr "Setup $(basename "${folder}")"
+  local hook_dir="${folder}/.git/hooks"
+
+  local workspace
+  workspace=$(setup_workspace 2>/dev/null)
+
+  mkdir -p "${hook_dir}"
+  mkdir -p "${folder}/.vscode"
+
+  bnr "Setting Up VSCode and Clang Settings"
+  [ ! -f "${folder}/.vscode/settings.json" ] && echo_exec ln -sfn "${workspace}/default-settings.json" "${folder}/.vscode/settings.json"
+  [ ! -f "${folder}/.vscode/extensions.json" ] && echo_exec ln -sfn "${workspace}/extensions.json" "${folder}/.vscode/extensions.json"
+  [ ! -f "${folder}/.vscode/c_cpp_properties.json" ] && echo_exec ln -sfn "${workspace}/c_cpp_properties.json" "${folder}/.vscode/c_cpp_properties.json"
+  [ ! -f "${folder}/.clang-tidy" ] && echo_exec ln -sfn "${workspace}/gato-clang-tidy_v2.txt" "${folder}/.clang-tidy"
+  [ ! -f "${folder}/.clang-format" ] && echo_exec ln -sfn "${workspace}/gato-clang-format_v1.txt" "${folder}/.clang-format"
+  # ln -sfn "${workspace}/cmake-tools-kits.json" "${folder}/.vscode/FILE"
+
+  bnr "Install Git Hooks"
+  [ ! -f "${hook_dir}/commit-msg" ] && echo_exec ln -sfn "${REAL_SCRIPT_FILE_PATH}" "${hook_dir}/commit-msg"
+  [ ! -f "${hook_dir}/prepare-commit-msg" ] && echo_exec ln -sfn "${REAL_SCRIPT_FILE_PATH}" "${hook_dir}/prepare-commit-msg"
+}
+
+function _where_func_is_define() {
+  # set -euo pipefail
+  trap 'shopt -u extdebug' EXIT
+  shopt -s extdebug
+  local filename
+  filename="$(declare -F -- "${1}" | rev | cut -d' ' -f1 | rev)"
+  if [[ -z "${filename}" ]]; then
+    return 1
+  else
+    echo "${filename}"
+    return 0
+  fi
+}
+
+# NOTE: ALIASES DO WORK BUT NESTED ONES NOT SO MUCH
+# trap 'shopt -u expand_aliases' EXIT
+# shopt -s expand_aliases
+# alias real='cd $(readlink -f .)'
+# NOTE: Using eval to be able to run aliases
+# eval "${command_array[@]}"
+
+function v_set() {
+  # alias gato_set='export gato_HOME="${gato_HOME:-$(find "$(realpath ~)" -maxdepth 5 -name .repo -exec dirname {} \; | fzf --select-1 --exit-0)}"; [[ -n "${gato_HOME}" ]] && echo "gato_HOME: ${gato_HOME}"'
+  local symlink_path="/tmp/.gato_home"
+  export gato_HOME="${gato_HOME:=$({ [ -L "${symlink_path}" ] && _realpath "${symlink_path}"; } || find "$(_realpath ~)" -maxdepth 5 -name .repo -exec dirname {} \; | fzf --select-1 --exit-0)}"
+  [[ -n "${gato_HOME}" ]] && ln -sfn "${gato_HOME}" "${symlink_path}"
+  # && _log_warning "gato_HOME: ${gato_HOME}"
+}
+function v_reset() {
+  # alias gato_reset='unset gato_HOME; gato_set'
+  rm -rf "/tmp/.gato_home"
+  unset gato_HOME
+  v_set
+}
+# function vsource() {
+#   # alias vsource='gato_set && cd ${gato_HOME}/build/workspace/sources'
+#   # TODO: CAN ONLY BE AN ALIAS
+#   __gato_set && cd "${gato_HOME}/build/workspace/sources" && true
+# }
+
+function __bitbake_is_there() {
+  # alias __bitbake_is_there='which bitbake 2>/dev/null | grep -q "/bitbake/bin/bitbake"'
+  which bitbake 2>/dev/null | grep -q "/bitbake/bin/bitbake"
+}
+
+function v_bitbake() {
+  # alias bitbake='{ __bitbake_is_there || { gato_init; }; } && gato-with-sms command bitbake'
+  { __bitbake_is_there || { v_init; }; } && gato-with-sms command bitbake "${@}"
+  # { __bitbake_is_there || { v_init; }; } && echo command bitbake "${@}"
+}
+
+function v_debugfs() {
+  # alias debugfs='gato_set && export DEBUG_FS="${DEBUG_FS:-$(realpath ~)/debugfs}" && mkdir -p "${DEBUG_FS}" && rsync -azvhP "${gato_HOME}"/build/tmp/work/checkers-poky-linux-gnueabi/multimodal-image-minimal/1.0-r0/rootfs*/* "${DEBUG_FS}"'
+  v_set &&
+    mkdir -p "${DEBUG_FS:=$(_realpath ~)/debugfs}" &&
+    rsync -azvhP "${gato_HOME}"/build/tmp/work/checkers-poky-linux-gnueabi/multimodal-image-minimal/1.0-r0/rootfs*/* "${DEBUG_FS}"
+}
+
+###############################################################################
+
+###############################################################################
+
+if [[ ${BASH_SOURCE[0]} != "$0" ]]; then
+  # echo "Script is being sourced"
+  echo -n ''
+  # export -f execute_gradle select_gradle lookup err
+else
+  # echo "Script is being executed"
+
+  SCRIPT_FILE_PATH=${BASH_SOURCE[0]}
+  SCRIPT_FILENAME=$(basename "${SCRIPT_FILE_PATH}")
+  REAL_SCRIPT_FILE_PATH=$(_realpath "${SCRIPT_FILE_PATH}")
+  REAL_SCRIPT_FILENAME=$(basename "${REAL_SCRIPT_FILE_PATH}")
+  export CMAKE_EXPORT_COMPILE_COMMANDS="ON"
+  # export CLOUD_DESKTOP=${CLOUD_DESKTOP:-${DEV_HOST:-$(read -r -s -p "CLOUD_DESKTOP: " temp && echo "${temp}")}}
+  export CLOUD_DESKTOP=${CLOUD_DESKTOP:=${DEV_HOST:=vdi}}
+
+  # echo "SCRIPT_FILE_PATH: ${SCRIPT_FILE_PATH}"
+  # echo "SCRIPT_FILENAME: ${SCRIPT_FILENAME}"
+  # echo "REAL_SCRIPT_FILE_PATH: ${REAL_SCRIPT_FILE_PATH}"
+  # echo "REAL_SCRIPT_FILENAME: ${REAL_SCRIPT_FILENAME}"
+  # echo "$(bnr 'DEBUG_INFO START')
+  #   CLOUD_DESKTOP_REAL_HOME: ${CLOUD_DESKTOP_REAL_HOME}
+  #   CLOUD_DESKTOP_gato_HOME: ${CLOUD_DESKTOP_gato_HOME}
+  #   CLOUD_DESKTOP_PLATFORM_TOOLS: ${CLOUD_DESKTOP_PLATFORM_TOOLS}
+  #   CLOUD_DESKTOP_HOSTNAME: ${CLOUD_DESKTOP_HOSTNAME}
+  #   CLOUD_DESKTOP: ${CLOUD_DESKTOP}
+  #   PLATFORM_TOOLS: ${PLATFORM_TOOLS}
+  #   $(bnr 'DEBUG_INFO END')
+  # "
+
+  command_array=()
+  if [[ "${REAL_SCRIPT_FILENAME}" == "${SCRIPT_FILENAME}" ]]; then
+    _usage="${REAL_SCRIPT_FILENAME} <command>
+      \r\nCommands:\n$(declare -F | awk '{print $NF}' | grep -v '^_' | sed 's|\(.*\)|    \1|g')"
+    __helpArgCountUsage 1 "${_usage}" "${@}" && exit 1
+
+    command_array+=("${@}")
+  else
+    command_array+=("${SCRIPT_FILENAME}" "${@}")
+  fi
+  ################################################################################
+  # =========================  _     _
+  # ========================= | |   (_)_ __  _   ___  __
+  # ========================= | |   | | '_ \| | | \ \/ /
+  # ========================= | |___| | | | | |_| |>  <
+  # ========================= |_____|_|_| |_|\__,_/_/\_\ =========================
+  ################################################################################
+  function_to_run="${command_array[0]}"
+  # function_location="$(_where_func_is_define "${function_to_run}")"
+
+  # if [[ "${SCRIPT_FILE_PATH}" != "${function_location}" ]]; then
+  #   # If these are not the same then, then function_to_run is not define in this file.
+  #   _log_warning "'${function_to_run}' is not part of ${REAL_SCRIPT_FILENAME} tools."
+  #   exit 1
+  # fi
+
+  if ! {
+    compgen -a
+    compgen -A function
+  } | grep -q "${function_to_run}"; then
+    # If these are not the same then, then function_to_run is not define in this file.
+    _log_warning "'${function_to_run}' is not part of ${REAL_SCRIPT_FILENAME} tools."
+    exit 1
+  fi
+
+  _log_warning "Executing: ${command_array[*]}"
+  "${command_array[@]}"
+  exit $?
+
+  # if [[ -t 0 ]]; then
+  #   echo "NO STDIN PIPE DETECTED"
+  #   "${command_array[@]}"
+  # else
+  #   echo "STDIN PIPE DETECTED"
+  #   "${command_array[@]}"
+  # fi
+
+  # if [[ -t 1 ]]; then
+  #   echo "NO STDOUT PIPE DETECTED"
+  # else
+  #   echo "STDOUT PIPE DETECTED"
+  # fi
+
+  # for func in "${EXPORT_FUNCTIONS[@]}"; do
+  #   if [[ "${func}" == "${command_array[0]}" ]]; then
+  #     echo "Executing: ${command_array[*]}"
+  #     "${command_array[@]}"
+  #     exit $?
+  #   fi
+  # done
+
+  # echo "'${command_array[0]}' is not part of ${REAL_SCRIPT_FILENAME} tools." && exit 1
+  # pipe1="/tmp/pipe1"
+  # mkfifo "${pipe1}"
+  # trap 'rm -rf ${pipe1}' EXIT
+  # cat - | (cat - >"${pipe1}") &
+
+  # # echo "tail -f ${pipe1}"
+  # # tail -f ${pipe1}
+fi

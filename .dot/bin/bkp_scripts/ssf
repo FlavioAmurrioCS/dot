@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function ssf() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-ssf} [-p only prints host]" "$@" && return 0
+  local selected_host
+  selected_host=$(__selectHostFromInventoryApi) || return 1
+  [ "${1}" == "-p" ] && echo "${selected_host}" && return 0
+  log_success "Connecting to ${selected_host}..."
+  append_to_history ssh "${selected_host}"
+}
+
+ssf "${@}"

@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function dlog() {
+  local docker_id
+  log_warning "CONTAINER ID        IMAGE                                         NAME"
+  docker_id="$(docker ps | grep -v CONTAINER | awk '{print $1, $2, $NF}' | select_one)" || return 1
+  docker logs -f "$(echo "${docker_id}" | awk '{print $3}')"
+}
+
+dlog "${@}"
