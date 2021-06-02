@@ -113,7 +113,7 @@ function _realpath() { python -c "import os; print(os.path.realpath('${1}'))"; }
 function open() { _log_info "open ${*}" && __execCheck -q open && command open "${@}"; }
 function md5sum() { if __execCheck -q md5sum; then command md5sum "${@}"; else command md5 "${@}"; fi; }
 function strToHash() { echo "${*}" | md5sum | tr -d 'abcdef0-' | grep -o ".........$"; }
-function strToHashPort() { echo "$(("$(strToHash "${*}")" % 64511 + 1023))"; }
+function strToHashPort() { echo "$(($(strToHash "${*}") % 64511 + 1023))"; }
 
 function clr() {
   # Color       #define       Value       RGB
@@ -273,7 +273,7 @@ function pserver() {
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
   local port
   port="${1:-"$(strToHashPort "$(basename "$(pwd)")")"}"
-  if __quiet python -m SimpleHTTPServer; then
+  if __quiet python -m SimpleHTTPServer --help; then
     nohup python -m SimpleHTTPServer "${port}" &
   else
     nohup python -m http.server "${port}" &
