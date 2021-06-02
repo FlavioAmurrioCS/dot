@@ -273,8 +273,12 @@ function pserver() {
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
   local port
   port="${1:-"$(strToHashPort "$(basename "$(pwd)")")"}"
-  nohup python -m SimpleHTTPServer "${port}" &
-  log_success "http://localhost:${port}"
+  if __quiet python -m SimpleHTTPServer; then
+    nohup python -m SimpleHTTPServer "${port}" &
+  else
+    nohup python -m http.server "${port}" &
+  fi
+  _log_success "http://localhost:${port}"
 }
 
 function __is_exec_p() { [ -x "${1}" ] && echo "${1}"; }
@@ -587,56 +591,56 @@ function tunneldb() {
   local remote_port
   local local_port
 
-  host=${1:-$(echo "${dbHostList}" | select_one)} || return 1
-  log_info "Target Host: ${host}"
+  host=${1:-$(echo "${dbHostList}" | __selectOne)} || return 1
+  _log_info "Target Host: ${host}"
   # host=${1:-$(s -p)} || return 1
-  log_info -n "Verifying connections to '${host}'... " &&
+  _log_info -n "Verifying connections to '${host}'... " &&
     ! _quick_ssh "${host}" 'exit 0' &&
-    log_error "FAILED" &&
+    _log_error "FAILED" &&
     return 1
-  log_info "OK"
+  _log_info "OK"
 
   ! remote_port=${2:-$(
-    log_info -n "Retrieving port from tnsnames.ora on host..."
-    _quick_ssh "${host}" 'grep PORT /app/oracle/product/**/db/network/admin/tnsnames.ora' | tr -d ' ' | grep -oE "PORT=[0-9]+" | sort -u | grep -oE -m 1 '[0-9]{4,6}' && log_info "OK"
+    _log_info -n "Retrieving port from tnsnames.ora on host..."
+    _quick_ssh "${host}" 'grep PORT /app/oracle/product/**/db/network/admin/tnsnames.ora' | tr -d ' ' | grep -oE "PORT=[0-9]+" | sort -u | grep -oE -m 1 '[0-9]{4,6}' && _log_info "OK"
   )} &&
-    log_warning "FAILED" &&
+    _log_warning "FAILED" &&
     return 1
-  log_info "Target remote port: ${remote_port}"
+  _log_info "Target remote port: ${remote_port}"
 
   local_port=${3:-${remote_port}}
-  log_info "Target local port: ${local_port}"
+  _log_info "Target local port: ${local_port}"
 
   # # shellcheck disable=SC2029
   # ! _quick_ssh "${host}" "sudo lsof -i ':${port}' 2>/dev/null | grep -q LISTEN" &&
-  #   log_error "'${host}' doesn't seem to have db running on port '${port}'." &&
+  #  _log_error "'${host}' doesn't seem to have db running on port '${port}'." &&
   #   return 1
 
   local inUse
   if ! inUse=$(port "${local_port}" 2>/dev/null); then
     if echo "${inUse}" | grep -v "${host}" | grep -q ssh; then
-      log_warning "Seems like another process/tunnel is using port ${local_port}. Killing all of them."
+      _log_warning "Seems like another process/tunnel is using port ${local_port}. Killing all of them."
       port "${local_port}" -k >/dev/null 2>&1
     else
-      log_info "Seems like there is a tunnel already for '${host}:${remote_port}' mapped to 'localhost:${local_port}'"
+      _log_info "Seems like there is a tunnel already for '${host}:${remote_port}' mapped to 'localhost:${local_port}'"
       return 0
     fi
   fi
 
   append_to_history_no_exec tunneldb "${host}" "${remote_port}" "${local_port}"
-  log_info -n "Attempting to tunnel... "
+  _log_info -n "Attempting to tunnel... "
   {
     # _quick_ssh -N -f -L "${local_port}:127.0.0.1:${remote_port}" "${host}" &&
     _quick_ssh -N -f -L "${local_port}:${host}:${remote_port}" "${host}" &&
       ! port "${local_port}" >/dev/null 2>&1 &&
-      log_success "DB tunnel opened from ${host}:${remote_port} to localhost:${local_port}"
+      _log_success "DB tunnel opened from ${host}:${remote_port} to localhost:${local_port}"
   } ||
-    log_error "Tunnel did not stay up.\nManually run 'ssh -vvvv -N -f -L ${local_port}:${host}:${remote_port} ${host}' to diagnose."
+    _log_error "Tunnel did not stay up.\nManually run 'ssh -vvvv -N -f -L ${local_port}:${host}:${remote_port} ${host}' to diagnose."
 }
 
 ################################################################################
 function rmux() {
-  local host="${1:-${CLOUD_DESKTOP:-${DEV_HOST:-vdi}}}"
+  local host="${1:-${CLOUD_DESKTOP}}"
   local usage="
   ${FUNCNAME[0]} [hostname]
 
@@ -670,17 +674,17 @@ function rmux() {
     "
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
   [ -n "${TMUX}" ] && {
-    log_warning "Should not open tmux inside tmux, ssh-ing instead."
+    _log_warning "Should not open tmux inside tmux, ssh-ing instead."
     ssh "${host}"
     return
   }
-  log_warning "Target host: ${host}"
+  _log_warning "Target host: ${host}"
   # TODO: Decide on whether to install tmux globally on every box
   # shellcheck disable=SC2016
   local init='
     cat > ${HOME}/.rmux.tmux.conf
     export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
-    if ! command tmux -V 2>/dev/null | grep -q "tmux .*3" 2>/dev/null; then
+    if ! command tmux -V 2>/dev/null | grep -q "3" 2>/dev/null; then
       echo -e "\033[1;33mtmux3 not found. Attemping to install tmux..." 1>&2
       # if ! sudo -n echo >/dev/null 2>&1; then
         # sudo -n yum install -y https://BLANK/tmux-3.0a-1.el7.x86_64.rpm 1>&2
@@ -699,7 +703,7 @@ function rmux() {
   '
   local selection
   export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
-  selection="$(ssh "${ssh_options[@]}" "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | select_one)" || return 1
+  selection="$(ssh "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | __selectOne)" || return 1
 
   # shellcheck disable=SC2016
   local tmux_cmd='
@@ -711,12 +715,13 @@ function rmux() {
   "<create new session>")
     local new_sesssion_name
     read -r -p "New Tmux Session Name: " new_sesssion_name
-    ssh -S none -t "${host}" ''"${tmux_cmd}"' new-session -s '"${new_sesssion_name}"
+    ssh_new "${host}" ''"${tmux_cmd}"' new-session -s '"${new_sesssion_name}"
     ;;
   *:*)
     local session_name
     session_name="$(echo "${selection}" | cut -d ":" -f1)"
-    ssh -S none -t "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
+    # ssh -S none -t "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
+    ssh_new "${host}" ''"${tmux_cmd}"' attach-session -t '"${session_name}"
     ;;
   *)
     echo "WHAT HAPPENED! ${selection}"
@@ -726,7 +731,7 @@ function rmux() {
 
 function mux() {
   [ -n "${TMUX}" ] && {
-    log_warning "Should not open tmux inside tmux, ssh-ing instead."
+    _log_warning "Should not open tmux inside tmux, ssh-ing instead."
     return
   }
 
@@ -735,7 +740,7 @@ function mux() {
   selection="$({
     command tmux ls 2>/dev/null
     echo "<create new session>"
-  } | select_one)" || return 1
+  } | __selectOne)" || return 1
 
   case "${selection}" in
   "<create new session>")
@@ -766,14 +771,14 @@ function __selectRemoteFolder() {
   local host="${1}"
   local destination="${2}"
   remote_command="find ${destination} -maxdepth 1 -type d -follow"
-  ssh "${ssh_options[@]}" "${host}" ''"${remote_command}"'' 2>/dev/null | select_one || return 1
+  ssh "${ssh_options[@]}" "${host}" ''"${remote_command}"'' 2>/dev/null | __selectOne || return 1
 }
 
 function __selectLocalFolder() {
   local usage="${FUNCNAME[0]} <folder>"
   __helpArgCountUsage 2 "${usage}" "${@}" && return 0
   destination="${1}"
-  find "${destination}" -maxdepth 1 -type d | select_one || return 1
+  find "${destination}" -maxdepth 1 -type d | __selectOne || return 1
 }
 
 function __selectHostFromInventoryApi() {
@@ -781,7 +786,7 @@ function __selectHostFromInventoryApi() {
   cache_command curl -s -X GET "${url}" --insecure |
     cut -d '"' -f2 |
     grep "BLANK$" |
-    select_one || return 1
+    __selectOne || return 1
 }
 
 # TODO: Remote dot clone
@@ -815,7 +820,7 @@ function __localGitClone() {
 
   local project_home=~/projects/${folder}
   [ ! -d "${project_home}" ] &&
-    { git clone "${git_ssh_url}" "${project_home}" --recursive || { log_warning "Error Cloning ${git_ssh_url}" && return 1; }; }
+    { git clone "${git_ssh_url}" "${project_home}" --recursive || { _log_warning "Error Cloning ${git_ssh_url}" && return 1; }; }
   echo "${project_home}"
 }
 
@@ -824,7 +829,7 @@ function __getGitHubToken() {
   github_token=$(grep "^export GITHUB_TOKEN=" ~/.localrc ~/.bashrc ~/.zshrc 2>/dev/null | head -1 | cut -d '=' -f2 | tr -d '"')
   [ -n "${github_token}" ] && echo "${github_token}" && return 0
 
-  log_warning "No GITHUB_TOKEN detected in ~/.localrc ~/.bashrc ~/.zshrc or env. Let's get one!"
+  _log_warning "No GITHUB_TOKEN detected in ~/.localrc ~/.bashrc ~/.zshrc or env. Let's get one!"
 
   local github_user="${USER}"
   if echo "${USER}" | grep -qE "deploy|root|regadmin"; then
@@ -834,14 +839,14 @@ function __getGitHubToken() {
   local github_password
   read -r -s -p "Enter github password for ${github_user}: " github_password
 
-  log_info "\nRequesting GITHUB_TOKEN..."
+  _log_info "\nRequesting GITHUB_TOKEN..."
   github_token=$(curl -s -u "${github_user}:${github_password}" -X POST https://BLANK/api/v3/authorizations \
     --data '{"scopes":["repo","user","write:discussion"],"note": "vscode-setup'"${RANDOM}"'"}' |
     grep '"token"' |
     cut -d '"' -f4)
-  [ -z "${github_token}" ] && log_error "Could not get GITHUB_TOKEN, check github password!" && return 1
+  [ -z "${github_token}" ] && _log_error "Could not get GITHUB_TOKEN, check github password!" && return 1
 
-  log_success "Adding GITHUB_TOKEN to ~/.localrc!"
+  _log_success "Adding GITHUB_TOKEN to ~/.localrc!"
   echo 'export GITHUB_TOKEN="'"${github_token}"'"' >>~/.localrc
   echo "${github_token}"
 }
@@ -858,11 +863,11 @@ function __listGitProjects() {
   {
     for i in $(echo "${github_orgs}" | tr ' ' '\n' | sort -u); do
       curl -s -H "Authorization: token ${github_token}" "https://BLANK/api/v3/orgs/${i}/repos?per_page=999" ||
-        { log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
+        { _log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
     done
     for j in $(echo "${github_users}" | tr ' ' '\n' | sort -u); do
       curl -s -H "Authorization: token ${github_token}" "https://BLANK/api/v3/users/${j}/repos?per_page=999" ||
-        { log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
+        { _log_error "Could not reach github or invalid GITHUB_TOKEN." && return 1; } &
     done
   } | grep "ssh_url" | cut -d '"' -f4
 }
@@ -979,7 +984,7 @@ function c-local() {
 
 function clone() {
   local git_url
-  git_url=$(__listGitProjects | select_one) || return 1
+  git_url=$(__listGitProjects | __selectOne) || return 1
   __localGitClone "${git_url}"
 }
 
