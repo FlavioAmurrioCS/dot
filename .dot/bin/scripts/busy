@@ -109,7 +109,7 @@ function bnr() { python -c "print(' ${*} '.center(78, '='))"; }
 function auniq() { awk '!x[$0]++' "${@}"; }
 function getCol() { awk '{print $'"${1}"'}'; }
 function grep() { command grep --color=auto --line-buffered "${@}"; }
-function _realpath() { python -c "import os; print(os.path.realpath('${1}'))"; }
+function _realpath() { if __execCheck -q realpath; then command realpath "${@}"; else python -c "import os; print(os.path.realpath('${1}'))"; fi; }
 function open() { _log_info "open ${*}" && __execCheck -q open && command open "${@}"; }
 function md5sum() { if __execCheck -q md5sum; then command md5sum "${@}"; else command md5 "${@}"; fi; }
 function strToHash() { echo "${*}" | md5sum | tr -d 'abcdef0-' | grep -o ".........$"; }
