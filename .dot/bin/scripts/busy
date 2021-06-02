@@ -273,12 +273,12 @@ function pserver() {
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
   local port
   port="${1:-"$(strToHashPort "$(basename "$(pwd)")")"}"
-  if __quiet python -m http.server --help; then
-    nohup python -m http.server "${port}" &
-  else
+  if [ "$(python -c 'import sys; print(sys.version_info[:][0])')" == 2 ]; then
     nohup python -m SimpleHTTPServer "${port}" &
+  else
+    nohup python -m http.server "${port}" &
   fi
-  _log_success "http://localhost:${port}"
+  open "http://localhost:${port}"
 }
 
 function __is_exec_p() { [ -x "${1}" ] && echo "${1}"; }
