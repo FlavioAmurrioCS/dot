@@ -59,6 +59,3 @@
 # ~/.gitconfig.local file with your extra settings
 [include]
   path = ~/.gitconfig.local
-[user]
-  name = FlavioAmurrioCS
-  email = 25621374+FlavioAmurrioCS@users.noreply.github.com
