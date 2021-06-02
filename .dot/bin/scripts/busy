@@ -387,12 +387,17 @@ function remote() {
   local host="${CLOUD_DESKTOP}"
   [ "${1}" == "-h" ] && shift 1 && host="${1}" && shift 1
   __helpArgCountUsage 1 "${usage}" "${@}" && return 0
-  local remote_execute="
-    cat > /tmp/remote
-    chmod +x /tmp/remote
-    /tmp/remote ${*}
-  "
-  ssh "${host}" ''"${remote_execute}"'' <"${REAL_SCRIPT_FILE_PATH}"
+  # __echo_exec rsync "${__quick_ssh_options[@]}" -azvhLP "${REAL_SCRIPT_FILE_PATH}" "${host}:/tmp/remote"
+  __quiet rsync -azvhLP "${REAL_SCRIPT_FILE_PATH}" "${host}:/tmp/remote"
+  # ssh "${host}" 'cat > /tmp/remote; chmod +x /tmp/remote;' <"${REAL_SCRIPT_FILE_PATH}"
+  ssh "${host}" ''"/tmp/remote ${*}"''
+}
+
+function rmux2() {
+  local usage="${FUNCNAME[0]} [host]"
+  __helpArgCountUsage 0 "${usage}" "${@}" && return 0
+  local host="${1:-${CLOUD_DESKTOP}}"
+  remote -h "${host}" mux
 }
 
 function getLocalInfo() {
@@ -404,6 +409,11 @@ function getLocalInfo() {
   export REAL_HOME REAL_PROJECT_HOME LOCAL_BIN
   [[ ! "${PATH}" == *"${LOCAL_BIN}"* ]] &&
     export PATH="${LOCAL_BIN}${PATH:+:${PATH}}"
+
+  homebrew_bin="${HOME}/Applications/brew/bin"
+
+  [ -d "${homebrew_bin}" ] && [[ ! "${PATH}" == *"${homebrew_bin}"* ]] &&
+    export PATH="${homebrew_bin}${PATH:+:${PATH}}"
 
   mkdir -p "${REAL_PROJECT_HOME}"
   mkdir -p "${LOCAL_BIN}"
@@ -1252,6 +1262,7 @@ else
   # export CLOUD_DESKTOP=${CLOUD_DESKTOP:-${DEV_HOST:-$(read -r -s -p "CLOUD_DESKTOP: " temp && echo "${temp}")}}
   export CLOUD_DESKTOP=${CLOUD_DESKTOP:=${DEV_HOST:=vdi}}
 
+  getLocalInfo
   # echo "SCRIPT_FILE_PATH: ${SCRIPT_FILE_PATH}"
   # echo "SCRIPT_FILENAME: ${SCRIPT_FILENAME}"
   # echo "REAL_SCRIPT_FILE_PATH: ${REAL_SCRIPT_FILE_PATH}"
