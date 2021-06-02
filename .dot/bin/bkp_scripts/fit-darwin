@@ -1,0 +1,243 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+# shellcheck disable=SC2120
+uname -s | grep -q Darwin && function md5sum() { cat | md5 "${@}"; }
+[ -x /usr/local/bin/kinit ] && /usr/local/bin/kswitch -p "${USER}@BLANK" 2>/dev/null
+
+# TODO: Interactive host selection.
+# TODO: Print out.
+# TODO: Check ipa_knint status. Maybe prompt for ip_kinit if need.
+# TODO: If running on vde, prompt message to do ipa_knint to be done on the personal laptop
+# TODO: Add Variable for default enviroment
+
+ssh_options=(
+  "-oCompression=yes"
+  "-oControlMaster=auto"
+  "-oControlPath=/tmp/%r@%h:%p"
+  "-oControlPersist=yes"
+  "-oForwardAgent=yes"
+  "-oGSSAPIAuthentication=yes"
+  "-oGSSAPIDelegateCredentials=yes"
+  "-oKeepAlive=yes"
+  "-oLogLevel=FATAL"
+  "-oServerAliveCountMax=6"
+  "-oServerAliveInterval=15"
+  "-oStrictHostKeyChecking=no"
+  "-oUserKnownHostsFile=/dev/null"
+)
+
+
+function fit() {
+  local user_hash
+  user_hash="$(echo "${USER}" | md5sum | tr 'abcdef0-' ' ' | tr -d ' ' | grep -o ".........$")"
+
+  local fit_ent_qa="${FIT_ENT_QA:-${entsilo_fitness_qa[$((user_hash % ${#entsilo_fitness_qa[@]}))]}}"
+  local fit_ent_dev="${FIT_ENT_DEV:-${entsilo_fitness_dev[$((user_hash % ${#entsilo_fitness_dev[@]}))]}}"
+  local fit_mhp_qa="${FIT_MHP_QA:-${mhp_fitness_qa[$((user_hash % ${#mhp_fitness_qa[@]}))]}}"
+
+  local host="${FIT_DEFAULT:-${fit_ent_qa}}"
+
+  local host_position
+  local host_arr
+
+  local host_showned=false
+
+  while [[ "${1}" =~ ^- && ! "${1}" == "--" ]]; do
+    case "${1}" in
+    -h | --host)
+      shift && host="${1}"
+      ;;
+    -p | --port)
+      shift && port="${1}"
+      ;;
+    -q | -Q)
+      host="${fit_ent_qa}"
+      log_warning "Using host for ent-qa: ${host}" && host_showned=true
+      ;;
+    -ql)
+      local index=0
+      for VAR in "${entsilo_fitness_qa[@]}"; do
+        echo "${index}: ${VAR}"
+        index=$((index + 1))
+      done
+      return 0
+      ;;
+    -q* | -Q*)
+      host_arr=("${entsilo_fitness_qa[@]}")
+      host_position="${1:2}"
+      host="${host_arr[host_position]}"
+      [ -z "${host}" ] &&
+        log_error "Index must be between 0 and $((${#host_arr[@]} - 1))." &&
+        return 1
+      log_warning "Using host for ent-qa: ${host}" && host_showned=true
+      ;;
+    -d | -D)
+      host="${fit_ent_dev}"
+      log_warning "Using host for ent-dev: ${host}" && host_showned=true
+      ;;
+    -dl)
+      local index=0
+      for VAR in "${entsilo_fitness_dev[@]}"; do
+        echo "${index}: ${VAR}"
+        index=$((index + 1))
+      done
+      return 0
+      ;;
+    -d* | -D*)
+      host_arr=("${entsilo_fitness_dev[@]}")
+      host_position="${1:2}"
+      host="${host_arr[host_position]}"
+      [ -z "${host}" ] &&
+        log_error "Index must be between 0 and $((${#host_arr[@]} - 1))." &&
+        return 1
+      log_warning "Using host for ent-dev: ${host}" && host_showned=true
+      ;;
+    -m | -M)
+      host="${fit_mhp_qa}"
+      log_warning "Using host for mhp-qa: ${host}" && host_showned=true
+      ;;
+    -ml)
+      local index=0
+      for VAR in "${mhp_fitness_qa[@]}"; do
+        echo "${index}: ${VAR}"
+        index=$((index + 1))
+      done
+      return 0
+      ;;
+    -m* | -M*)
+      host_arr=("${mhp_fitness_qa[@]}")
+      host_position="${1:2}"
+      host="${host_arr[host_position]}"
+      [ -z "${host}" ] &&
+        log_error "Index must be between 0 and $((${#host_arr[@]} - 1))." &&
+        return 1
+      log_warning "Using host for mhp-qa: ${host}" && host_showned=true
+      ;;
+    -v | --vde)
+      host="${USER}.BLANK"
+      ;;
+    *)
+      # TO BE HANDLED
+      ;;
+    esac
+    shift
+  done
+  if [[ "${1}" == '--' ]]; then shift; fi
+
+  [ -z "${host}" ] && log_error "How did host get to be empty!" && return 1
+
+  [ "${host_showned}" == false ] && log_info "Using ${host}"
+
+  local fit_host="${host}"
+
+  local host_hash
+  host_hash="$(ssh -q "${ssh_options[@]}" "${fit_host}" 'hostname')" ||
+    { log_error "Cannot connect to '${fit_host}'. Make sure you have run ipa_kinit.sh"; }
+
+  local HASH_NUM
+  HASH_NUM="$(echo "${USER}${host_hash}" | md5sum | tr 'abcdef0-' ' ' | tr -d ' ' | grep -o ".........$")"
+
+  local DEFAULT_PORT=$((HASH_NUM % 64511 + 1023))
+  local DEFAULT_DEBUG_PORT=$((HASH_NUM % 64511 + 1024))
+  local DEFAULT_XVFB_SCREEN=$((HASH_NUM % 99 + 1))
+
+  local PORT=${port:-${FIT_PORT:-${DEFAULT_PORT}}}
+  local PORT_DEBUG=${FIT_DEBUG_PORT:-${DEFAULT_DEBUG_PORT}}
+  local XVFB_SCREEN=${FIT_XVFB_SCREEN:-${DEFAULT_XVFB_SCREEN}}
+
+  local USAGE="${FUNCNAME[0]:-fit} [options...] <start|stop|status|restart|code|browser|ssh|pull|checkout>
+  This will run fitnesse on ${fit_host} and it will be accessible on http://localhost:${PORT}
+  Options:
+    -h --host <host_name>   Overide default FIT_HOST.
+    -h --help               Show usage.
+    -q[index] -q            Use entsilo_fitness_qa[index],  if no index use ${fit_ent_qa}
+    -d[index] -d            Use entsilo_fitness_dev[index], if no index use ${fit_ent_dev}
+    -m[index] -m            Use mhp_fitness_qa[index], if no index use ${fit_mhp_qa}
+    start                   Start fitnesse server on port ${PORT} (Includes setup).
+    stop                    Stop fitnesse server running on port ${PORT}.
+    status                  Status of fitnesse server for ${USER}.
+    restart                 Stop, recompile and start fitnesse (Includes setup).
+    code                    Open VsCode interactive project selector.
+    ssh                     SSH to the FIT_HOST.
+    s                       SSH with s command to the FIT_HOST.
+    ports                   Display the ports for fitness.
+    pull                    Update the current branches for vfitness,  and vscode_setup.
+    checkout                Change branches for vfitness and .
+    dot                     Update/install dot files.
+    mux                     Start tmux session on box.
+  Define the following variables in your ~/.localrc to change default host when running the command.
+    FIT_HOST:     'fit <action>'.
+    FIT_ENT_QA:   'fit -q <action>'.
+    FIT_ENT_DEV:  'fit -d <action>'.
+    FIT_MHP_QA:   'fit -m <action>'.
+  NOTE: This script hashes the \$USER (${USER}) and generates a default PORT=${PORT}, DEBUG_PORT=${PORT_DEBUG} and XVFB_SCREEN=${XVFB_SCREEN}.
+      This can be overriden by defining 'FIT_PORT', 'FIT_DEBUG_PORT' and 'FIT_XVFB_SCREEN' in your ~/.localrc.
+      Default host are assign based on the hash of the username and hostname to spread out people.
+"
+
+  help_arg_count_usage 1 "${USAGE}" "$@" && return 0
+  [ -z "${host_hash}" ] && log_warning "${USAGE}" && return 1
+  lsof -i ":${PORT}" | grep -q "${fit_host}" ||
+    tunnel "${fit_host}" "${PORT}" >/dev/null 2>&1
+  case ${1} in
+  start | stop | status | restart | setup | ports | pull)
+  # shellcheck disable=SC2016
+    local remote_command='
+    cat > /tmp/fit
+    $(grep http_proxy /etc/bashrc)
+    command -v fit >/dev/null 2>&1 ||
+      {
+        echo -e "\033[1;33mInstalling fit on '"${fit_host}"'.\033[0m" &&
+          sudo install /tmp/fit /usr/bin
+      } &&
+      rm /tmp/fit &&
+      export FIT_PORT='"${PORT}"' &&
+      export FIT_DEBUG_PORT='"${PORT_DEBUG}"'&&
+      export FIT_XVFB_SCREEN='"${XVFB_SCREEN}"' &&
+      fit '"${*}"''
+    ssh "${ssh_options[@]}" "${fit_host}" ''"${remote_command}"'' <"${SCRIPT_HOME}/fit"
+    ;;
+  checkout)
+    ssh -t "${ssh_options[@]}" "${fit_host}" 'fit checkout'
+    ;;
+  code)
+    c -h "${fit_host}"
+    ;;
+  tunnel)
+    msg --warning "Deprecated: Tunnel is open automagically :) (http://localhost:${PORT})"
+    ;;
+  ssh)
+    # shellcheck disable=SC2029
+    ssh "${fit_host}"
+    ;;
+  s)
+    s "${fit_host}"
+    ;;
+  mux | tmux)
+    # shellcheck disable=SC2029
+    rmux "${fit_host}"
+    ;;
+  dot)
+    # shellcheck disable=SC2029
+    remoteDot "${fit_host}"
+    ;;
+  update | install)
+    local remote_command='
+    cat > /tmp/fit
+    sudo install /tmp/fit /usr/bin &&
+      rm /tmp/fit &&
+      echo fit command on '"${fit_host}"' has been install/updated!'
+    ssh "${ssh_options[@]}" "${fit_host}" ''"${remote_command}"'' <"${SCRIPT_HOME}/fit"
+    ;;
+  *)
+    log_warning "${USAGE}"
+    ;;
+  esac
+}
+
+fit "${@}"

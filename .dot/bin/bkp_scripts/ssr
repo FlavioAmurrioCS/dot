@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+  source "${SCRIPT_HOME}/__script_utilities.sh"
+
+function ssr() {
+  help_arg_count_usage 0 "${FUNCNAME[0]:-ssr} [-p only prints host]" "$@" && return 0
+  local selected_host
+  selected_host=$(grep "^ssh " "${HISTFILE:-${HOME}/.bash_history}" | awk '{print $2}' | grep "BLANK.com$" | grep -v "{" | sort -u | tr -d '"' | fzf)
+
+  [ -z "${selected_host}" ] &&
+    msg --warning "Host selection cancelled." &&
+    return 1
+  [ "${1}" == "-p" ] && msg --info "${selected_host}" && return 0
+  append_to_history ssh "${selected_host}"
+}
+
+ssr "${@}"

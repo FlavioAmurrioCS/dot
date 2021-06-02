@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-
-# shellcheck source=../scripts/__script_utilities.sh
-SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
-  [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
-  source "${SCRIPT_HOME}/__script_utilities.sh"
-
-bnr "${@}"

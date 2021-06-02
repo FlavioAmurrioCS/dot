@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-
-exec "$(find ~/.virtualenvs/**/bin ~/.local/bin/ /app/venv/**/bin /app/virtualenv/**/bin -maxdepth 2 -name pygmentize -follow -print -quit 2>/dev/null)" -g "$@"

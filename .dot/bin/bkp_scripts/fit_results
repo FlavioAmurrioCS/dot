@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+
+# TODO: Run this remotely to allow to use watch
+# TODO: Maybe move this into fit local or remote
+[ $# -lt 1 ] && echo "Pass in url." && exit 1
+
+junitUrl=${1}
+
+workdir=$(mktemp -d) &&
+  cd "${workdir}" &&
+  curl -L -u "${USER}:${JENKINS_PASSWORD}" -o junit.zip -s "${junitUrl}" &&
+  unzip junit.zip >/dev/null 2>&1 &&
+  cat ./*.xml | cut -d ">" -f1
+rm -rf "${workdir}"

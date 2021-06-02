@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#!/bin/bash -x
+
+CODE_SERVER_PORT="${CODE_SERVER_PORT:-9091}"
+
+ssh_options=(
+  "-oCompression=yes"
+  "-oControlMaster=auto"
+  "-oControlPath=/tmp/%r@%h:%p"
+  "-oControlPersist=yes"
+  "-oForwardAgent=yes"
+  "-oGSSAPIAuthentication=yes"
+  "-oGSSAPIDelegateCredentials=yes"
+  "-oKeepAlive=yes"
+  "-oLogLevel=FATAL"
+  "-oServerAliveCountMax=6"
+  "-oServerAliveInterval=15"
+  "-oStrictHostKeyChecking=no"
+  "-oUserKnownHostsFile=/dev/null"
+)
+
+function color_log() {
+  local color=${1} && shift
+  local options="-e"
+  [[ "${1}" == "-n" ]] && options+="n" && shift
+  echo "${options}" "${color}${*}\033[0m" 1>&2
+}
+function log_info() { color_log '\033[1;37m' "${@}"; }
+function log_error() { color_log '\033[1;31m' "${@}"; }
+function log_success() { color_log '\033[1;32m' "${@}"; }
+function log_warning() { color_log '\033[1;33m' "${@}"; }
+
+function quick_ssh() {
+  local host="${1}"
+  local remote_command="${2}"
+  ssh "${ssh_options[@]}" -q "${host}" "${remote_command}"
+}
+
+function selectRemoteProject() {
+  local host="${1}"
+  # shellcheck disable=SC2016
+  local remote_cmd='find $(readlink -f ${HOME}/projects) -maxdepth 1 -type d -follow | grep -v "/projects$"'
+  local selected
+  selected="$(quick_ssh "${host}" "${remote_cmd}" | fzf -0)"
+  [ -z "${selected}" ] &&
+    echo "Selection cancelled." &&
+    return 1
+  echo "${selected}" && return 0
+}
+
+function downloadCodeServer() {
+  GITHUB_URL="https://github.com"
+  GITHUB_PROJECT="cdr/code-server"
+  local downloadUrl
+  local filename
+  downloadUrl="${GITHUB_URL}$(curl -s -L "${GITHUB_URL}/${GITHUB_PROJECT}/releases/latest" | grep -oE "/${GITHUB_PROJECT}/.*.rpm" | grep -v -e arm)"
+  filename="$(basename "${downloadUrl}")"
+  echo "${filename}"
+  log_warning -n "Downloading code-server ..."
+  curl -s -L -o "${filename}" "${downloadUrl}" || return 1
+  log_success "Done!"
+}
+
+function ensureCodeServerIsRunning() {
+  local host="${1}"
+  if ! quick_ssh "${host}" 'command -v code-server >/dev/null 2>&1'; then
+    log_warning "Could not find code-server in ${host}. Attempting to install."
+    local filename
+    filename=$(downloadCodeServer) || return 1
+    log_info "Sending ${filename} to ${host}"
+    scp "${ssh_options[@]}" "${filename}" "${host}:/tmp"
+    log_info "Installing ${filename} ..."
+    quick_ssh "${host}" 'sudo -n rpm -i '"/tmp/${filename}"'' || exit 1
+    log_success "Done!"
+  fi
+  # Make sure code-sever is running on server
+  if ! quick_ssh "${host}" 'ps aux | grep -v grep | grep -q code-server'; then
+    log_info "Starting code-server"
+    local remote_cmd="nohup code-server \
+      --disable-telemetry \
+      --disable-update-check \
+      --auth none \
+      --bind-addr 127.0.0.1:${CODE_SERVER_PORT} \
+      --user-data-dir /mnt/volume/home/${USER}/.vscode-user-data-dir \
+      --enable-proposed-api ms-python.gather \
+      --extensions-dir /mnt/volume/home/${USER}/.vscode-server/extensions &"
+    ssh -S none -f "${host}" "${remote_cmd}" >/dev/null 2>&1 &
+  fi
+}
+
+function cs() {
+  local host="${1:-${DEV_HOST:-${USER}.BLANK}}"
+  local filepath
+  (lsof -i ":${CODE_SERVER_PORT}" | grep -q "${host}" ||
+    ssh "${ssh_options[@]}" -N -f -L "localhost:${CODE_SERVER_PORT}:localhost:${CODE_SERVER_PORT}" "${host}" >/dev/null 2>&1 &)
+  filepath="$(selectRemoteProject "${host}")" || return 1
+  ensureCodeServerIsRunning "${host}"
+  open -a "Google Chrome" "http://localhost:${CODE_SERVER_PORT}/?folder=${filepath}"
+  log_success "Openning http://localhost:${CODE_SERVER_PORT}/?folder=${filepath}"
+  # quick_ssh "${host}" 'grep "^password" ~/.config/code-server/config.yaml'
+}
+
+cs "$@"
