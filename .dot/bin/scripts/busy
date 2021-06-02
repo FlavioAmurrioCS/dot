@@ -273,10 +273,10 @@ function pserver() {
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
   local port
   port="${1:-"$(strToHashPort "$(basename "$(pwd)")")"}"
-  if __quiet python -m SimpleHTTPServer --help; then
-    nohup python -m SimpleHTTPServer "${port}" &
-  else
+  if __quiet python -m http.server --help; then
     nohup python -m http.server "${port}" &
+  else
+    nohup python -m SimpleHTTPServer "${port}" &
   fi
   _log_success "http://localhost:${port}"
 }
