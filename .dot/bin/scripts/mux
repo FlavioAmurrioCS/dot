@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+
+# shellcheck source=../scripts/__script_utilities.sh
+SCRIPT_HOME="$(dirname "$(cd "$(dirname "${0}")" >/dev/null 2>&1 && pwd -P)")/scripts" &&
+    [ -f "${SCRIPT_HOME}/__script_utilities.sh" ] &&
+    source "${SCRIPT_HOME}/__script_utilities.sh"
+
+# [ -x /usr/local/bin/kinit ] && /usr/local/bin/kswitch -p "${USER}@AUTH.COM" 2>/dev/null
+
+function mux() {
+    [ -n "${TMUX}" ] && {
+        log_warning "Should not open tmux inside tmux, ssh-ing instead."
+        return
+    }
+
+    local selection
+    export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+    selection="$({
+        command tmux ls 2>/dev/null
+        echo "<create new session>"
+    } | select_one)" || return 1
+
+    #   # shellcheck disable=SC2016
+    #   local tmux_cmd='
+    #     export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
+    #     tmux_conf="${HOME}/.rmux.tmux.conf"
+    #     [ -f "${HOME}/.tmux.conf" ] && tmux_conf="${HOME}/.tmux.conf"
+    #     tmux -f ${tmux_conf}'
+    case "${selection}" in
+    "<create new session>")
+        local new_sesssion_name
+        read -r -p "New Tmux Session Name: " new_sesssion_name
+        command tmux new-session -s "${new_sesssion_name}"
+        ;;
+    *:*)
+        local session_name
+        session_name="$(echo "${selection}" | cut -d ":" -f1)"
+        command tmux attach-session -t "${session_name}"
+        ;;
+    *)
+        echo "WHAT HAPPENED! ${selection}"
+        ;;
+    esac
+}
+
+mux "${@}"
