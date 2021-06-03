@@ -26,6 +26,8 @@ function __quiet() { "${@}" >/dev/null 2>&1; }
 function __echo_exec() { _log_warning "${*}" && "${@}"; }
 function __record() { echo "${*}" >>"${HISTFILE:-"${HOME}/.bash_history"}"; }
 function __record_exec() { __record "${@}" && __echo_exec "${@}"; }
+function _realDirname() { dirname "$(_realpath "${1}")"; }
+function _printEnv() { for var in "$@"; do _log_warning "${var}: ${!var}"; done; }
 function __uniq_history() {
   temp_file="$(mktemp)"
   hist_file="${HISTFILE:-"${HOME}/.bash_history"}"
@@ -418,7 +420,7 @@ function getLocalInfo() {
   mkdir -p "${REAL_PROJECT_HOME}"
   mkdir -p "${LOCAL_BIN}"
 
-  [ "${1}" == "-p" ] && echo "${REAL_HOME} ${REAL_PROJECT_HOME} ${LOCAL_BIN} ${USER} $(hostname)"
+  [ "${1}" == "-p" ] && echo -n "${REAL_HOME} ${REAL_PROJECT_HOME} ${LOCAL_BIN} ${USER} ${HOSTNAME}"
 }
 
 function getRemoteInfo() {
