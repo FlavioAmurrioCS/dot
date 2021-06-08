@@ -1207,49 +1207,14 @@ function _where_func_is_define() {
   fi
 }
 
+###############################################################################
+###############################################################################
 # NOTE: ALIASES DO WORK BUT NESTED ONES NOT SO MUCH
 # trap 'shopt -u expand_aliases' EXIT
 # shopt -s expand_aliases
 # alias real='cd $(readlink -f .)'
 # NOTE: Using eval to be able to run aliases
 # eval "${command_array[@]}"
-
-function v_set() {
-  # alias gato_set='export gato_HOME="${gato_HOME:-$(find "$(realpath ~)" -maxdepth 5 -name .repo -exec dirname {} \; | fzf --select-1 --exit-0)}"; [[ -n "${gato_HOME}" ]] && echo "gato_HOME: ${gato_HOME}"'
-  local symlink_path="/tmp/.gato_home"
-  export gato_HOME="${gato_HOME:=$({ [ -L "${symlink_path}" ] && _realpath "${symlink_path}"; } || find "$(_realpath ~)" -maxdepth 5 -name .repo -exec dirname {} \; | fzf --select-1 --exit-0)}"
-  [[ -n "${gato_HOME}" ]] && ln -sfn "${gato_HOME}" "${symlink_path}"
-  # && _log_warning "gato_HOME: ${gato_HOME}"
-}
-function v_reset() {
-  # alias gato_reset='unset gato_HOME; gato_set'
-  rm -rf "/tmp/.gato_home"
-  unset gato_HOME
-  v_set
-}
-# function vsource() {
-#   # alias vsource='gato_set && cd ${gato_HOME}/build/workspace/sources'
-#   # TODO: CAN ONLY BE AN ALIAS
-#   __gato_set && cd "${gato_HOME}/build/workspace/sources" && true
-# }
-
-function __bitbake_is_there() {
-  # alias __bitbake_is_there='which bitbake 2>/dev/null | grep -q "/bitbake/bin/bitbake"'
-  which bitbake 2>/dev/null | grep -q "/bitbake/bin/bitbake"
-}
-
-function v_bitbake() {
-  # alias bitbake='{ __bitbake_is_there || { gato_init; }; } && gato-with-sms command bitbake'
-  { __bitbake_is_there || { v_init; }; } && gato-with-sms command bitbake "${@}"
-  # { __bitbake_is_there || { v_init; }; } && echo command bitbake "${@}"
-}
-
-function v_debugfs() {
-  # alias debugfs='gato_set && export DEBUG_FS="${DEBUG_FS:-$(realpath ~)/debugfs}" && mkdir -p "${DEBUG_FS}" && rsync -azvhP "${gato_HOME}"/build/tmp/work/checkers-poky-linux-gnueabi/multimodal-image-minimal/1.0-r0/rootfs*/* "${DEBUG_FS}"'
-  v_set &&
-    mkdir -p "${DEBUG_FS:=$(_realpath ~)/debugfs}" &&
-    rsync -azvhP "${gato_HOME}"/build/tmp/work/checkers-poky-linux-gnueabi/multimodal-image-minimal/1.0-r0/rootfs*/* "${DEBUG_FS}"
-}
 
 ###############################################################################
 

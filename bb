@@ -1,0 +1,1 @@
+./.dot/bin/scripts/bb
