@@ -28,6 +28,7 @@ function __record() { echo "${*}" >>"${HISTFILE:-"${HOME}/.bash_history"}"; }
 function __record_exec() { __record "${@}" && __echo_exec "${@}"; }
 function _realDirname() { dirname "$(_realpath "${1}")"; }
 function _printEnv() { for var in "$@"; do _log_warning "${var}: ${!var}"; done; }
+function __allFunctions() { compgen -A 'function'; }
 function __uniq_history() {
   temp_file="$(mktemp)"
   hist_file="${HISTFILE:-"${HOME}/.bash_history"}"
