@@ -338,18 +338,24 @@ function installFromGithub() {
   # grep -e executable |
 
   grep_ignore_cmd=(
-    grep -Eiv
-    -e "*.md$"
-    -e "*.fish$"
-    -e "*.ps1$"
-    -e "*.bash$"
-    -e "*.zsh$"
+    grep -iv
+    -e ".md$"
+    -e ".fish$"
+    -e ".ps1$"
+    -e ".bash$"
+    -e ".zsh$"
     -e "LICENSE"
     -e "COPYING"
-    -e "*.[0-1]+$"
+    -e ".1$"
     -e "/doc/"
     -e "complet"
-    -e ".tar"
+    -e ".tar$"
+    -e ".tar.gz$"
+    -e ".tar.xz$"
+    -e ".tgz$"
+    -e ".so$"
+    -e ".dylib$"
+    -e "Python$"
   )
   exec_file="$(find . -type f -exec file {} \; |
     grep -e "$(uname -m | tr '_' '-')" -e "$(uname -m | tr '-' '_')" -e executable |
@@ -371,7 +377,7 @@ function __installAllBin() {
   installFromGithub junegunn fzf
   installFromGithub BurntSushi ripgrep
   installFromGithub direnv direnv
-  installFromGithub docker compose
+  # installFromGithub docker compose
   installFromGithub dundee gdu
   installFromGithub hadolint hadolint
   installFromGithub isacikgoz tldr
