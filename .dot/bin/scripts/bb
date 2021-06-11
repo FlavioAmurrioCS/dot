@@ -27,7 +27,7 @@ function __echo_exec() { _log_warning "${*}" && "${@}"; }
 function __record() { echo "${*}" >>"${HISTFILE:-"${HOME}/.bash_history"}"; }
 function __record_exec() { __record "${@}" && __echo_exec "${@}"; }
 function _realDirname() { dirname "$(_realpath "${1}")"; }
-function _printEnv() { for var in "$@"; do _log_warning "${var}: ${!var}"; done; }
+function _printEnv() { for var in "$@"; do _log_warning "${var}='${!var}'"; done; }
 function __allFunctions() { compgen -A 'function'; }
 function __uniq_history() {
   temp_file="$(mktemp)"
@@ -139,11 +139,15 @@ function clr() {
   mreset="$(tput sgr0)"
   counter=-1
 
-  sed_cmd="$(which gsed || which sed)"
+  sed_cmd="$(which gsed 2>/dev/null || which sed)"
 
   if __quiet "${sed_cmd}" --version; then
     I_FLAG="I"
   fi
+
+  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  __parseOptions "${@}" >/dev/null
+  set -- "${my_array[@]}"
 
   for word in "${@}"; do
     counter=$(((counter + 1) % 6))
@@ -151,22 +155,33 @@ function clr() {
     sed_args+=("-e" "s|\(${word}\)|${mcolor}\1${mreset}|g${I_FLAG}")
   done
 
-  "${sed_cmd}" "${sed_args[@]}"
+  "${sed_cmd}" "${sed_args[@]}" "${FILE:-/dev/stdin}"
 }
 
 function grp() {
+  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  __parseOptions "${@}" >/dev/null
+  set -- "${my_array[@]}"
   local grep_args=()
 
   for word in "${@}"; do
     grep_args+=("-e" "${word}")
   done
 
-  grep -i "${grep_args[@]}"
+  grep -i "${grep_args[@]}" "${FILE:-/dev/stdin}"
+}
+
+function grpAndClr() {
+  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  __parseOptions "${@}" >/dev/null
+  set -- "${my_array[@]}"
+  grp "--file=${FILE}" "$@" | clr --file=/dev/stdin "$@"
 }
 
 function __selectOne() {
   unset -f fzf
-  __cmdCheck -q fzf || function fzf() { _log_error "Install fzf!" && head -n 1; }
+  __execCheck -q fzf || function fzf() { _log_error "Install fzf!" && head -n 1; }
+  __execCheck -q timeout || function timeout() { perl -e 'alarm shift; exec @ARGV' "$@"; }
   # TODO: Handle when fzf is not found
   local selected
   selected="$(auniq | fzf --select-1 --exit-0 "${@}")"
@@ -262,15 +277,114 @@ function abspath() {
   _log_error "${1} does not exist." && return 1
 }
 
-function retry() {
-  local sleep_time="${RETRY_SLEEP:-5}"
+function __varToOption() {
+  local usage="${FUNCNAME[0]} <VARIABLE_NAME>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  echo "--$(echo "${1}" | tr '[:upper:]' '[:lower:]' | tr '_' '-')="
+}
 
-  while true; do
-    "${@}" && return 0
-    _log_warning "Retrying '${*}' after ${sleep_time} seconds..."
-    sleep "${sleep_time}"
+function __optionToVarName() {
+  local usage="${FUNCNAME[0]} <option_name>"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  echo -- "${1}" | tr '[:lower:]' '[:upper:]' | cut -d '=' -f1 | grep -oE '[A-Z]+.*' | tr '-' '_'
+}
+
+function __parseOptions() {
+  # Will parse option and export the variable. Use the next three lines to parse
+  # IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  # __parseOptions "${@}" >/dev/null
+  # set -- "${my_array[@]}"
+  local parsed_options=()
+  while [[ "${1}" =~ ^- && ! "${1}" == "--" ]]; do
+    var_name="$(__optionToVarName "${1}")"
+    parsed_options+=("${var_name}")
+
+    case ${1} in
+    -*=*) export "${var_name}=${1##*=}" ;;
+    *) export "${var_name}=true" ;;
+    esac
+
+    shift
+  done
+  if [[ "$1" == '--' ]]; then shift; fi
+
+  # _printEnv "${parsed_options[@]}"
+
+  for var in "${@}"; do
+    echo "${var}"
   done
 }
+
+function retry() {
+  local usage="${FUNCNAME[0]} <commands> [args..]"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  successAndExec --timeout=5 "$@"
+}
+
+function successAndExec() {
+  local usage="${FUNCNAME[0]} [options...] <commands> [args..] --- <command> [args...]
+  Will run and retry first set of commands until it returns success, then it will execute second command.
+
+  Options:
+    --sleep=<num>
+    --timeout=<num>
+    --max-retries=<num>
+  "
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+
+  local timeout_num="${BB_TIMEOUT:-9999999}"
+  local retry_sleep="${BB_RETRY_SLEEP:-5}"
+  local max_retries="${BB_RETRY_ATTEMPTS:-99999}"
+
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+    --timeout=*) timeout_num=${1##*=} ;;
+    --sleep=*) retry_sleep=${1##*=} ;;
+    --max-retries=*) max_retries=${1##*=} ;;
+    *) break ;;
+    esac
+    shift
+  done
+
+  local guard=()
+
+  while [[ $# -gt 0 && ! "${1}" == "---" ]]; do
+    guard+=("${1}")
+    shift
+  done
+  if [[ "$1" == '---' ]]; then shift; fi
+
+  local counter=0
+  local cmd=("${@}")
+
+  if [ "${max_retries}" -lt 1 ]; then
+    _log_error "Max Retries is less then 1."
+    return 1
+  fi
+
+  while true; do
+    timeout "${timeout_num}" "${guard[@]}" >/dev/null 2>&1 && break
+    exit_code=$?
+
+    case "${exit_code}" in
+    127) _log_warning "'${guard[*]}' is not a valid command." && return 127 ;;
+    124) _log_warning -n "'${guard[*]}' timeout after ${timeout_num} seconds. " ;;
+    esac
+
+    counter=$((counter + 1))
+
+    if [[ "${counter}" == "${max_retries}" ]]; then
+      _log_warning "Max retries done."
+      return 1
+    fi
+
+    _log_warning "Retrying '${guard[*]}' after ${retry_sleep} seconds..."
+    sleep "${retry_sleep}"
+  done
+
+  "${@}"
+}
+
 function pserver() {
   local usage="${FUNCNAME[0]} [port]"
   __helpArgCountUsage 0 "${usage}" "${@}" && return 0
@@ -399,6 +513,7 @@ function remote() {
   # __echo_exec rsync "${__quick_ssh_options[@]}" -azvhLP "${REAL_SCRIPT_FILE_PATH}" "${host}:/tmp/remote"
   __quiet rsync -azvhLP "${REAL_SCRIPT_FILE_PATH}" "${host}:/tmp/remote"
   # ssh "${host}" 'cat > /tmp/remote; chmod +x /tmp/remote;' <"${REAL_SCRIPT_FILE_PATH}"
+  # _log_warning "Executing '${*}' on '${host}'"
   ssh "${host}" ''"/tmp/remote ${*}"''
 }
 
