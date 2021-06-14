@@ -7,16 +7,13 @@ export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
 export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
 export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
 
-[[ ! "${PATH}" == *"${HOMEBREW_HOME}/bin"* ]] &&
-  export PATH="${HOMEBREW_HOME}/bin${PATH:+:${PATH}}"
-
-[[ ! "${PATH}" == *"${DOT_HOME}/bin/darwin"* ]] &&
-  export PATH="${DOT_HOME}/bin/darwin${PATH:+:${PATH}}"
+addToPath "${HOMEBREW_HOME}/bin"
+addToPath "${DOT_HOME}/bin/darwin"
 
 alias showhidden='defaults write com.apple.Finder AppleShowAllFiles true; killall Finder'
-alias jira='git symbolic-ref -q HEAD | rev | cut -d/ -f1 | rev | grep -oE "^[A-Z]{2,}-[0-9]+" | xargs -I {} open "https://jira.com/jira/browse/{}"'
-alias repo='git remote -v | grep -m 1 -oE "github.com.*.git" | tr ":" "/" | xargs -I {} open "https://{}"'
-alias pr='open "https://$(git remote -v | grep -m 1 -oE "github.com:[A-Za-z\-]+/[A-Za-z\-]+" | tr ":" "/")/pull/new/$(git branch | grep "*" | cut -d " " -f2)"'
+# alias jira='git symbolic-ref -q HEAD | rev | cut -d/ -f1 | rev | grep -oE "^[A-Z]{2,}-[0-9]+" | xargs -I {} open "https://jira.com/jira/browse/{}"'
+# alias repo='git remote -v | grep -m 1 -oE "github.com.*.git" | tr ":" "/" | xargs -I {} open "https://{}"'
+# alias pr='open "https://$(git remote -v | grep -m 1 -oE "github.com:[A-Za-z\-]+/[A-Za-z\-]+" | tr ":" "/")/pull/new/$(git branch | grep "*" | cut -d " " -f2)"'
 
 # export NVM_DIR="${HOME}/.nvm"
 # [ -s "${HOMEBREW_HOME}/opt/nvm/nvm.sh" ] &&

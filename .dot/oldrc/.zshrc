@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # shellcheck source=/dev/null
+exec bash
 
 export ZSH_DISABLE_COMPFIX="true"
 # If you come from bash you might have to change your $PATH.
@@ -106,26 +107,23 @@ plugins=(
 # alias zshconfig="mate ~/.zshrc"
 # alias ohmyzsh="mate ~/.oh-my-zsh"
 
-echo "~/.zshrc: zsh settings"
+echo "~/.zshrc: zsh settings" 2>&1
 
-# source() {
-#   if [ -z "$1" ]; then
-#     builtin source "${HOME}/.zshrc"
-#   else
-#     builtin source "$@"
-#   fi
-# }
+function sourceIt() {
+  if [ -z "${1}" ]; then
+    builtin source "${HOME}/.bashrc"
+  else
+    [ -f "${1}" ] && builtin source "${@}"
+  fi
+}
 
 export DOT_HOME="${HOME}/.dot"
 
 # shellcheck source=/dev/null
-[ -f "${DOT_HOME}/dotrc" ] && source "${DOT_HOME}/dotrc"
+sourceIt "${DOT_HOME}/dotrc"
 
 # ==================================== fzf =====================================
-command -v fzf >/dev/null 2>&1 && {
-  [[ $- == *i* ]] &&
-    [ -f "${DOT_HOME}/fzf_scripts/completion.zsh" ] &&
-    source "${DOT_HOME}/fzf_scripts/completion.zsh" 2>/dev/null
-  [ -f "${DOT_HOME}/fzf_scripts/key-bindings.zsh" ] &&
-    source "${DOT_HOME}/fzf_scripts/key-bindings.zsh" 2>/dev/null
-}
+if [[ $- == *i* ]] && which fzf >/dev/null 2>&1; then
+  sourceIt "${DOT_HOME}/fzf_scripts/completion.zsh" 2>/dev/null
+  sourceIt "${DOT_HOME}/fzf_scripts/key-bindings.zsh" 2>/dev/null
+fi

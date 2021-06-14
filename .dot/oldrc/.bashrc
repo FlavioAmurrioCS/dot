@@ -4,7 +4,7 @@
 # TODO: REMOVE
 # If this is a non iteracive shell then echo should be disabled
 function status() {
-  [[ $- == *i* ]] && echo "${@}"
+  [[ $- == *i* ]] && echo "${@}" >&2
 }
 # status "~/.bashrc: bash settings"
 
@@ -39,24 +39,21 @@ shopt -s extglob
   bind '"\e[A": history-search-backward' &&
   bind '"\e[B": history-search-forward'
 
-# source() {
-#   if [ -z "${1}" ]; then
-#     builtin source "${HOME}/.bashrc"
-#   else
-#     builtin source "${@}"
-#   fi
-# }
+function sourceIt() {
+  if [ -z "${1}" ]; then
+    builtin source "${HOME}/.bashrc"
+  else
+    [ -f "${1}" ] && builtin source "${@}"
+  fi
+}
 
 export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\W/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/') \[\e[0m\]\$ "
 export DOT_HOME="${HOME}/.dot"
 
-[ -f "${DOT_HOME}/dotrc" ] && source "${DOT_HOME}/dotrc"
+sourceIt "${DOT_HOME}/dotrc"
 
 # ==================================== fzf =====================================
-command -v fzf >/dev/null 2>&1 && {
-  [[ $- == *i* ]] &&
-    [ -f "${DOT_HOME}/fzf_scripts/completion.bash" ] &&
-    source "${DOT_HOME}/fzf_scripts/completion.bash" 2>/dev/null
-  [ -f "${DOT_HOME}/fzf_scripts/key-bindings.bash" ] &&
-    source "${DOT_HOME}/fzf_scripts/key-bindings.bash" 2>/dev/null
-}
+if [[ $- == *i* ]] && which fzf >/dev/null 2>&1; then
+  sourceIt "${DOT_HOME}/fzf_scripts/completion.bash" 2>/dev/null
+  sourceIt "${DOT_HOME}/fzf_scripts/key-bindings.bash" 2>/dev/null
+fi

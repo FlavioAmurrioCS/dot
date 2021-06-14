@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+
+# TODO: REMOVE
+# status "~/.dot/linuxrc: linux settings"
+
+addToPath "${DOT_HOME}/bin/linux"
+
+# alias jira='git symbolic-ref -q HEAD | rev | cut -d/ -f1 | rev | grep -oE "^[A-Z]{2,}-[0-9]{1,}" | xargs -I {} echo "https://jira.com/jira/browse/{}"'
+# alias repo='git remote -v | grep -m 1 -oE "github.com.*.git" | tr ":" "/" | xargs -I {} echo "https://{}"'
+# alias pr='echo "https://$(git remote -v | grep -m 1 -oE "github.com:[A-Za-z\-]+/[A-Za-z\-]+" | tr ":" "/")/pull/new/$(git branch | grep "*" | cut -d " " -f2)"'
+
+# =================================== vscode ===================================
+! command -v code >/dev/null 2>&1 &&
+  function code() {
+    ! nc -z localhost "${REMOTE_VSCODE_PORT:=1337}" >/dev/null 2>&1 &&
+      echo "Open VsCode on this host to use this tool from external terminal" &&
+      return 1
+    readlink -f "${1}" | nc localhost "${REMOTE_VSCODE_PORT}"
+  }
+
+if [ "${TERM_PROGRAM}" == vscode ]; then
+  function ___codeActivator() {
+    code_path="$(command -v code 2>/dev/null)"
+    while read -r data; do
+      echo "${data}" && "${code_path}" "${data}"
+    done
+  }
+
+  ! nc -z localhost "${REMOTE_VSCODE_PORT:=1337}" && {
+    nc -k -l "${REMOTE_VSCODE_PORT:=1337}" | ___codeActivator >/dev/null 2>&1 &
+  }
+fi
+
+# cat "${HOME}/.dot/vscodeModels/generated_models.json" >"${HOME}/.dot/vscodeModels/models.json"
+
+# [ ! -d "${HOME}/.java_home" ] &&
+#   find /usr/lib/jvm -maxdepth 6 -type f -executable -name javac 2>/dev/null | sort | head -n 1 | sed 's|/bin.*||' | xargs -I {} ln -sfn {} "${HOME}/.java_home"
