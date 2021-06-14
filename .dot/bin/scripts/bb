@@ -3,6 +3,22 @@
 # shellcheck disable=SC2120
 
 # ================================ source-start ================================
+RUNNING_OS="$(uname -s)"
+
+function sourceIt() {
+  if [ -z "${1}" ]; then
+    builtin source "${HOME}/.bashrc"
+  else
+    [ -f "${1}" ] && builtin source "${@}"
+  fi
+}
+
+function addToPath() {
+  if [[ -n "${1}" && -d "${1}" && ! "${PATH}" == *"${1}"* ]]; then
+    export PATH="${1}${PATH:+:${PATH}}"
+  fi
+}
+
 function _color_log() {
   # [30m 0: BLACK
   # [31m 1: RED
@@ -145,7 +161,7 @@ function clr() {
     I_FLAG="I"
   fi
 
-  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  IFS=$'\n' read -r -d '' -a my_array < <(__parseOptions "${@}" && printf '\0')
   __parseOptions "${@}" >/dev/null
   set -- "${my_array[@]}"
 
@@ -159,7 +175,7 @@ function clr() {
 }
 
 function grp() {
-  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  IFS=$'\n' read -r -d '' -a my_array < <(__parseOptions "${@}" && printf '\0')
   __parseOptions "${@}" >/dev/null
   set -- "${my_array[@]}"
   local grep_args=()
@@ -172,7 +188,7 @@ function grp() {
 }
 
 function grpAndClr() {
-  IFS=$'\n' read -r -d '' -a my_array < <( __parseOptions "${@}" && printf '\0' )
+  IFS=$'\n' read -r -d '' -a my_array < <(__parseOptions "${@}" && printf '\0')
   __parseOptions "${@}" >/dev/null
   set -- "${my_array[@]}"
   grp "--file=${FILE}" "$@" | clr --file=/dev/stdin "$@"
