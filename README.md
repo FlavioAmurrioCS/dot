@@ -2,17 +2,19 @@
 https://www.atlassian.com/git/tutorials/dotfiles
 
 ```bash
-alias dot='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
-git clone --bare git@github.com:FlavioAmurrioCS/dot.git "${HOME}/.cfg"
+alias myconfig='git "--git-dir=${HOME}/.cfg/" "--work-tree=${HOME}"'
+git clone --bare https://github.com/FlavioAmurrioCS/dot.git "${HOME}/.cfg"
 
-if dot checkout; then
+if myconfig checkout; then
   echo "Checked out config.";
 else
     echo "Backing up pre-existing dot files.";
     mkdir -p ~/.config-backup
-    dot checkout 2>&1 | egrep "\s+\." | awk {'print $1'} | xargs -I{} mv {} ~/.config-backup/{}
-    dot checkout
+    myconfig checkout 2>&1 | egrep "\s+\." | awk {'print $1'} | xargs -I{} mv {} ~/.config-backup/{}
+    myconfig checkout
 fi;
+
+myconfig config --local status.showUntrackedFiles no
 ```
 
 ```bash
