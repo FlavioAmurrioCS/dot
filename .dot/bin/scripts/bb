@@ -853,6 +853,7 @@ function rmux() {
   '
   local selection
   export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
+  [ ! -f "${HOME}/.tmux.conf" ] && curl https://raw.githubusercontent.com/FlavioAmurrioCS/dot/master/.tmux.conf >"${HOME}/.tmux.conf"
   selection="$(ssh "${host}" ''"${init}"'' <"${HOME}/.tmux.conf" | __selectOne)" || return 1
 
   # shellcheck disable=SC2016
@@ -884,6 +885,8 @@ function mux() {
     _log_warning "Should not open tmux inside tmux, ssh-ing instead."
     return
   }
+
+  [ ! -f "${HOME}/.tmux.conf" ] && curl https://raw.githubusercontent.com/FlavioAmurrioCS/dot/master/.tmux.conf >"${HOME}/.tmux.conf"
 
   local selection
   export FZF_DEFAULT_OPTS="${FZF_DEFAULT_OPTS} --select-1"
