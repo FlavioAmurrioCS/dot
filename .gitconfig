@@ -50,8 +50,8 @@
 [diff "ansible-vault"]
   textconv = ansible-vault view
   cachetextconv = true
-[init]
-  templatedir = ~/.dot/git_template
+# [init]
+#   templatedir = ~/.dot/git_template
 [pull]
   rebase = false
 # git pull --rebase, --no-rebase, or --ff-only
