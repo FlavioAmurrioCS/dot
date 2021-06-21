@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# shellcheck disable=SC2034
 
 # Check for HOMEBREW INSTALLED BASH
 # NOTE: We always want bash
@@ -96,6 +97,9 @@ zsh)
     git
   )
   sourceIt "${ZSH}/oh-my-zsh.sh"
+  autoload -U colors && colors # Load colors
+  # shellcheck disable=SC2154,1087
+  PS1="%B%{$fg[red]%}[%{$fg[yellow]%}%n%{$fg[green]%}@%{$fg[blue]%}%M %{$fg[magenta]%}%~%{$fg[red]%}]%{$reset_color%}$%b "
   ;;
 bash)
   export BASH_SILENCE_DEPRECATION_WARNING=1
@@ -129,7 +133,46 @@ bash)
     bind '"\e[A": history-search-backward' &&
     bind '"\e[B": history-search-forward'
 
-  export PS1="\[\033[0;36m\]\u\[\033[m\]@\[\033[32m\]\h:\[\033[33;1m\]\W/\[\e[34;1m\]\[\e[32;1m\]\$(command -v git > /dev/null 2>&1 && git branch 2>/dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/') \[\e[0m\]\$ "
+  __TPUT_BOLD="$(tput bold)"
+  __TPUT_BLACK="${__TPUT_BOLD}$(tput setaf 8)"
+  __TPUT_RED="${__TPUT_BOLD}$(tput setaf 9)"
+  __TPUT_GREEN="${__TPUT_BOLD}$(tput setaf 10)"
+  __TPUT_YELLOW="${__TPUT_BOLD}$(tput setaf 11)"
+  __TPUT_BLUE="${__TPUT_BOLD}$(tput setaf 12)"
+  __TPUT_MAGENTA="${__TPUT_BOLD}$(tput setaf 13)"
+  __TPUT_CYAN="${__TPUT_BOLD}$(tput setaf 14)"
+  __TPUT_WHITE="${__TPUT_BOLD}$(tput setaf 15)"
+  __PS1_BLACK="\[${__TPUT_BLACK}\]"
+  __PS1_RED="\[${__TPUT_RED}\]"
+  __PS1_GREEN="\[${__TPUT_GREEN}\]"
+  __PS1_YELLOW="\[${__TPUT_YELLOW}\]"
+  __PS1_BLUE="\[${__TPUT_BLUE}\]"
+  __PS1_MAGENTA="\[${__TPUT_MAGENTA}\]"
+  __PS1_CYAN="\[${__TPUT_CYAN}\]"
+  __PS1_WHITE="\[${__TPUT_WHITE}\]"
+  __PS1_USERNAME="${__PS1_YELLOW}\u"
+  __PS1_AT="${__PS1_GREEN}@"
+  __PS1_HOSTNAME="${__PS1_BLUE}\${MACHINE_NAME:-\h}"
+  __PS1_WORKSPACE="${__TPUT_MAGENTA}\w"
+  __PS1_PROMPT="${__PS1_WHITE}\n$ \[\e[1;0m\]"
+  __PS1_WRAPPER_START="${__PS1_RED}["
+  __PS1_WRAPPER_END="${__PS1_RED}]"
+  # shellcheck disable=SC2016
+  __PS1_GIT='$(
+        BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+        [ "${BRANCH}" = HEAD ] && BRANCH=$(git describe --contains --all HEAD 2>/dev/null)
+        [ "${BRANCH}" != "" ] && {
+            echo -n "'"${__TPUT_CYAN}"'['"${__TPUT_RED}"'${BRANCH}"
+            git ls-files --error-unmatch -m --directory --no-empty-directory -o --exclude-standard ":/*" >/dev/null 2>&1 && echo -n " '"${__TPUT_YELLOW}✗"'"
+            echo -n "'"${__TPUT_CYAN}"']"
+        }
+    )'
+  export PS1="${__PS1_WRAPPER_START}${__PS1_USERNAME}${__PS1_AT}${__PS1_HOSTNAME} ${__PS1_WORKSPACE}${__PS1_WRAPPER_END}${__PS1_GIT}${__PS1_PROMPT}"
+  unset __TPUT_BOLD __TPUT_BLACK __TPUT_RED __TPUT_GREEN __TPUT_YELLOW \
+    __TPUT_BLUE __TPUT_MAGENTA __TPUT_CYAN __TPUT_WHITE __PS1_BLACK __PS1_RED \
+    __PS1_GREEN __PS1_YELLOW __PS1_BLUE __PS1_MAGENTA __PS1_CYAN __PS1_WHITE \
+    __PS1_USERNAME __PS1_AT __PS1_HOSTNAME __PS1_WORKSPACE __PS1_PROMPT \
+    __PS1_WRAPPER_START __PS1_WRAPPER_END __PS1_GIT
   ;;
 *)
   echo "${RUNNING_SHELL} is not configured." >&2
