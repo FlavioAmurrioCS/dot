@@ -861,7 +861,7 @@ function rmux() {
     export PATH="${HOME}/.dot/bin/linux/:${HOME}/.local/bin:/tmp/usr/bin:${PATH}"
     tmux_conf="${HOME}/.rmux.tmux.conf"
     [ -f "${HOME}/.tmux.conf" ] && tmux_conf="${HOME}/.tmux.conf"
-    tmux -f ${tmux_conf}'
+    tmux -u -f ${tmux_conf}'
   case "${selection}" in
   "<create new session>")
     local new_sesssion_name
@@ -899,12 +899,12 @@ function mux() {
   "<create new session>")
     local new_sesssion_name
     read -r -p "New Tmux Session Name: " new_sesssion_name
-    command tmux new-session -s "${new_sesssion_name}"
+    command tmux -u new-session -s "${new_sesssion_name}"
     ;;
   *:*)
     local session_name
     session_name="$(echo "${selection}" | cut -d ":" -f1)"
-    command tmux attach-session -t "${session_name}"
+    command tmux -u attach-session -t "${session_name}"
     ;;
   *)
     echo "WHAT HAPPENED! ${selection}"
