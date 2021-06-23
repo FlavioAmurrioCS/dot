@@ -546,7 +546,8 @@ function getLocalInfo() {
   REAL_HOME="${REAL_HOME:="$(_realpath "${HOME}")"}"
   REAL_PROJECT_HOME="${REAL_PROJECT_HOME:="$(_realpath "${REAL_HOME}/projects")"}"
   LOCAL_BIN="${LOCAL_BIN:="${REAL_HOME}/.local/bin"}"
-  export REAL_HOME REAL_PROJECT_HOME LOCAL_BIN
+  HOSTNAME="${HOSTNAME:=$(hostname)}"
+  export REAL_HOME REAL_PROJECT_HOME LOCAL_BIN HOSTNAME
   [[ ! "${PATH}" == *"${LOCAL_BIN}"* ]] &&
     export PATH="${LOCAL_BIN}${PATH:+:${PATH}}"
 
