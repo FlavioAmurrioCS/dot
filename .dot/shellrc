@@ -9,9 +9,11 @@ echo "${0}" | grep -q zsh &&
   export SHELL RUNNING_SHELL &&
   exec env bash
 
+if [ "${BASH_SOURCE[0]}" == "$0" ]; then echo "THIS FILE IS NOT MEANT TO BE EXECUTED!!!" && exit 1; fi
+
 RUNNING_SHELL="${RUNNING_SHELL:="$(basename "${SHELL}")"}"
 RUNNING_OS="${RUNNING_OS:="$(uname -s)"}"
-DOT_HOME="${HOME}/.dot"
+DOT_HOME=${DOT_HOME:="$(dirname "$(python -c "import os; print(os.path.realpath('${BASH_SOURCE[0]}'))")")"}
 
 function sourceIt() {
   if [ -z "${1}" ]; then
@@ -87,6 +89,8 @@ esac
 
 addToPath "${HOME}/.local/bin"
 addToPath "${DOT_HOME}/bin/scripts"
+
+which bb >/dev/null 2>&1 && eval "$(bb autocomplete)"
 
 case "${RUNNING_SHELL}" in
 zsh)

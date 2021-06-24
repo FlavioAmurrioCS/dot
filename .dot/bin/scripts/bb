@@ -3,7 +3,7 @@
 # shellcheck disable=SC2120
 
 # ================================ source-start ================================
-RUNNING_OS="$(uname -s)"
+RUNNING_OS="${RUNNING_OS:=$(uname -s)}"
 
 function sourceIt() {
   if [ -z "${1}" ]; then
@@ -12,13 +12,20 @@ function sourceIt() {
     [ -f "${1}" ] && builtin source "${@}"
   fi
 }
-
+function strContains() {
+  [ ! $# -eq 2 ] && echo 'USAGE: strContains <string> <substring>' && return 1
+  case "${1}" in *"${2}"*) return 0 ;; *) return 1 ;; esac
+}
+# function addToPath() {
+#   if [[ -n "${1}" && -d "${1}" && ! "${PATH}" == *"${1}"* ]]; then
+#     export PATH="${1}${PATH:+:${PATH}}"
+#   fi
+# }
 function addToPath() {
-  if [[ -n "${1}" && -d "${1}" && ! "${PATH}" == *"${1}"* ]]; then
+  if [ -n "${1}" ] && [ -d "${1}" ] && ! strContains "${PATH}" "${1}"; then
     export PATH="${1}${PATH:+:${PATH}}"
   fi
 }
-
 function _color_log() {
   # [30m 0: BLACK
   # [31m 1: RED
@@ -133,6 +140,213 @@ function open() { _log_info "open ${*}" && __execCheck -q open && command open "
 function md5sum() { if __execCheck -q md5sum; then command md5sum "${@}"; else command md5 "${@}"; fi; }
 function strToHash() { echo "${*}" | md5sum | tr -d 'abcdef0-' | grep -o ".........$"; }
 function strToHashPort() { echo "$(($(strToHash "${*}") % 64511 + 1023))"; }
+################################################################################
+################################################################################
+# shellcheck disable=SC2029
+function scpWithBackUp() {
+  local usage="Usage: ${FUNCNAME[0]} <local_source...> <remote_destination>"
+  local args=("${@}")
+  local local_files=()
+
+  while [ -n "${2}" ]; do local_files+=("${1}") && shift 1; done
+
+  local host
+  local remote_file_path
+  read -r host remote_file_path <<<"${1//:/ }"
+
+  for local_file in "${local_files[@]}"; do
+    [ -d "${local_file}" ] && _log_error "'${local_file}' is not a file." && return 1
+    [ ! -f "${local_file}" ] && _log_error "'${local_file}' does not exist." && return 1
+  done
+
+  { ! __varCheck local_files host remote_file_path || ! ssh "${host}" echo -n; } && _log_error "${usage}" && return 1
+
+  remote_file_path="${remote_file_path%/}"
+  local base_local_file
+  local timestamp
+  local file_hash
+  local remote_file_hash
+
+  if ssh "${host}" "test -d ${remote_file_path}"; then
+    remote_file_path="${remote_file_path}/${base_local_file}"
+  else
+    [ "${#local_files[@]}" -gt 1 ]
+    _log_warning "Cannot send multiple files to a file. \n${FUNCNAME[0]} ${args[*]}"
+    return 1
+  fi
+
+  for local_file in "${local_files[@]}"; do
+    base_local_file=$(basename "${local_file}")
+    timestamp="$(date -u +"%Y_%m_%d_%H_%M_%S")"
+    file_hash=$(md5sum "${local_file}" | cut -d' ' -f1 | grep -ioE '[A-Z0-9]+')
+    remote_file_hash=$(ssh "${host}" "md5sum ${remote_file_path} 2>/dev/null" | cut -d' ' -f1 | grep -ioE '[A-Z0-9]+')
+
+    if [ "${file_hash}" != "${remote_file_hash:-${file_hash}}" ]; then
+      _log_warning "Backing up ${remote_file_path} to ~/scp_backup/${base_local_file}.${timestamp}"
+      ssh "${host}" "mkdir -p ~/scp_backup && cp ${remote_file_path} ~/scp_backup/${base_local_file}.${timestamp}"
+    fi
+  done
+
+  scp "${args[@]}"
+}
+function isMac() { [ "${RUNNING_OS:=$(uname -s)}" = Darwin ]; }
+function isLinux() { [ "${RUNNING_OS:=$(uname -s)}" = Linux ]; }
+function isDirectAdb() {
+  __v_getLocalInfo
+  if [ -z "${IS_DIRECT_ADB}" ]; then
+    throwaway_port=8989
+    # shellcheck disable=SC2154
+    trap '${REAL_PLATFORM_TOOLS}/adb -P ${throwaway_port} kill-server; [ "${IS_DIRECT_ADB}" -eq 0 ] && adb start-server 2>/dev/null' EXIT
+    __quiet pgrep adb && __quiet "${REAL_PLATFORM_TOOLS}/adb" kill-server
+    "${REAL_PLATFORM_TOOLS}/adb" -P "${throwaway_port}" devices 2>/dev/null | grep -v -e 'List of devices attached' -e '^$' | grep -oE '[A-Z0-9]{16}' -m 1 >&2
+    IS_DIRECT_ADB="$?"
+    export IS_DIRECT_ADB
+  fi
+  return "${IS_DIRECT_ADB}"
+}
+# declare -F | awk '{print $NF}' | grep -e '^v-' -e '^v_'
+function brew() {
+  ! isMac && echo "Only on mac!" && return 1
+  export APPLICATION_DIR="${HOME}/Applications"
+  export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
+  export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
+  export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
+  local brew_bin="${HOMEBREW_HOME}/bin/brew"
+  if [ ! -x "${brew_bin}" ]; then
+    mkdir -p "${APPLICATION_DIR}"
+    git clone https://github.com/Homebrew/brew.git "${HOMEBREW_HOME}" || return 1
+  fi
+  addToPath "${HOMEBREW_HOME}/bin"
+  command brew "${@}"
+}
+function whichapp() {
+  ! isMac && echo "Only on mac!" && return 1
+  local appNameOrBundleId=$1 isAppName=0 bundleId
+  # Determine whether an app *name* or *bundle ID* was specified.
+  [[ $appNameOrBundleId =~ \.[aA][pP][pP]$ || $appNameOrBundleId =~ ^[^.]+$ ]] && isAppName=1
+  if ((isAppName)); then # an application NAME was specified
+    # Translate to a bundle ID first.
+    bundleId=$(osascript -e "id of application \"$appNameOrBundleId\"" 2>/dev/null) ||
+      {
+        echo "${FUNCNAME[0]}: ERROR: Application with specified name not found: $appNameOrBundleId" 1>&2
+        return 1
+      }
+  else # a BUNDLE ID was specified
+    bundleId=$appNameOrBundleId
+  fi
+  # Let AppleScript determine the full bundle path.
+  fullPath=$(osascript -e "tell application \"Finder\" to POSIX path of (get application file id \"$bundleId\" as alias)" 2>/dev/null ||
+    {
+      echo "${FUNCNAME[0]}: ERROR: Application with specified bundle ID not found: $bundleId" 1>&2
+      return 1
+    })
+  printf '%s\n' "$fullPath"
+  # Warn about /Volumes/... paths, because applications launched from mounted
+  # devices aren't persistently installed.
+  if [[ $fullPath == /Volumes/* ]]; then
+    echo "NOTE: Application is not persistently installed, due to being located on a mounted volume." >&2
+  fi
+}
+# shellcheck disable=SC2229,SC2163
+function ensureVariable() {
+  local varName=${1}
+  if ! __varCheck -q "${varName}"; then
+    read -r -p "${varName}: " "${varName}"
+    export "${varName}"
+  fi
+  __varCheck -q "${varName}"
+}
+function fileContainsString() {
+  local file=${1}
+  local string=${2}
+  [ -f "${file}" ] && grep -q "${string}" "${file}"
+}
+function _where_func_is_define() {
+  # set -euo pipefail
+  trap 'shopt -u extdebug' EXIT
+  shopt -s extdebug
+  local filename
+  filename="$(declare -F -- "${1}" | rev | cut -d' ' -f1 | rev)"
+  if [[ -z "${filename}" ]]; then
+    return 1
+  else
+    echo "${filename}"
+    return 0
+  fi
+}
+function fancyRunner() {
+  # region
+  local usage="${FUNCNAME[0]} <cmd> [args...]"
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  runnerBanner="\
+##############################################################################
+Running: ${*}
+##############################################################################
+"
+  _log_warning "${runnerBanner}"
+
+  # shellcheck disable=SC2154
+  trap 'exit_code=$?
+  [ ${exit_code} -eq 1 ] && _log_error "${runnerBanner}Has FAILED with exit code ${exit_code}"
+' EXIT
+  "${@}" || exit 1
+  # endregion
+}
+function runInDocker() {
+  local usage="${FUNCNAME[0]} [-t dockername] <function> [args...]"
+  local dockername="devenv"
+  [ "${1}" == "-t" ] && shift 1 && dockername="${1}" && shift 1
+  __helpArgCountUsage 1 "${usage}" "${@}" && return 0
+  docker cp "${REAL_SCRIPT_FILE_PATH}" "${dockername}:/tmp/remote" || return 1
+  # _log_warning "Executing '${*}' on '${host}'"
+  docker exec -it "${dockername}" bash -c ''"/tmp/remote ${*}"''
+}
+function docker-bash() {
+  local name
+  name="$(docker ps | grep -oE '[^ ]+$' | grep -v NAMES | __selectOne)" || return 1
+  __echo_exec docker exec -it "${name}" bash
+}
+function shouldIContinue() {
+  read -p "${1:-'Continue(Y/n)? '}" -n 1 -r
+  if [[ $REPLY =~ ^[Yy]$ ]]; then
+    echo -e '\n'
+    return 0
+  else
+    _log_warning "\nExiting..."
+    exit 1
+  fi
+}
+# shellcheck disable=SC2120
+function cheapFzf() {
+  local array=()
+  if [[ ! -t 0 ]]; then
+    while read -r line; do array+=("$line"); done
+  fi
+  array+=("${@}")
+
+  case "${#array[@]}" in
+  0) return 1 ;;
+  1) echo "${1}" ;;
+  *) select foo in "${array[@]}"; do [ -n "${foo}" ] && echo "${foo}" && return 0; done </dev/tty ;;
+  esac
+}
+
+function fzf() {
+  if __execCheck -q fzf; then
+    command fzf "${@}"
+  else
+    (installFromGithub junegunn fzf &) >/dev/null 2>&1
+    cheapFzf
+  fi
+}
+
+function showFunction() { [ -n "${1}" ] && compgen -A 'function' | grep -q "^${1}$" && type "${1}" | grep -v "^${1} is a function$"; }
+
+function autocomplete() { echo "complete -W '$(grep ^function "${REAL_SCRIPT_FILE_PATH}" | tr '()' ' ' | awk '{print$2}' | grep -v '^__' | tr '\n' ' ')' ${REAL_SCRIPT_FILENAME}"; }
+
+function editScript() { code "${REAL_SCRIPT_FILE_PATH}" 2>/dev/null || vim "${REAL_SCRIPT_FILE_PATH}"; }
+################################################################################
+################################################################################
 
 function clr() {
   # Color       #define       Value       RGB
@@ -1421,7 +1635,6 @@ else
     exit 1
   fi
 
-  _log_warning "Executing: ${command_array[*]}"
   "${command_array[@]}"
   exit $?
 
