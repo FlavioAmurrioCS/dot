@@ -329,7 +329,7 @@ export REMOTE_VSCODE_PORT="1337"
 # ==================================== tmux ====================================
 # TODO: Move inside tmux.conf
 if [ -n "${TMUX}" ]; then
-  rmux --help
+  bb rmux --help
   alias fibv='tmux-layout-dwindle brvs'
   alias fibh='tmux-layout-dwindle brhs'
   function tmw() {
