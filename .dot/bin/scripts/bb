@@ -170,9 +170,9 @@ function scpWithBackUp() {
   if ssh "${host}" "test -d ${remote_file_path}"; then
     remote_file_path="${remote_file_path}/${base_local_file}"
   else
-    [ "${#local_files[@]}" -gt 1 ]
-    _log_warning "Cannot send multiple files to a file. \n${FUNCNAME[0]} ${args[*]}"
-    return 1
+    [ "${#local_files[@]}" -gt 1 ] &&
+      _log_warning "Cannot send multiple files to a file. \n${FUNCNAME[0]} ${args[*]}" &&
+      return 1
   fi
 
   for local_file in "${local_files[@]}"; do
