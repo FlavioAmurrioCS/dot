@@ -48,3 +48,4 @@ nohup.out
 .vscode
 .clang-format
 .clang-tidy
+build
