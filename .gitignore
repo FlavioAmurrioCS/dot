@@ -45,3 +45,6 @@ Thumbs.db
 .env
 no_track_*
 nohup.out
+.vscode
+.clang-format
+.clang-tidy
