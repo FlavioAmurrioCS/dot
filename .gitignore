@@ -49,3 +49,5 @@ nohup.out
 .clang-format
 .clang-tidy
 build
+*.patch
+*.diff
