@@ -340,7 +340,7 @@ function fzf() {
   fi
 }
 
-function showFunction() { [ -n "${1}" ] && compgen -A 'function' | grep -q "^${1}$" && type "${1}" | grep -v "^${1} is a function$"; }
+function showFunction() { [ -n "${1}" ] && compgen -A 'function' | grep -q "^${1}$" && type "${1}" | grep -v "^${1} is a function$" | { bat --style=plain -l sh 2>/dev/null || cat; }; }
 
 function autocomplete() { echo "complete -W '$(grep ^function "${REAL_SCRIPT_FILE_PATH}" | tr '()' ' ' | awk '{print$2}' | grep -v '^__' | tr '\n' ' ')' ${REAL_SCRIPT_FILENAME}"; }
 
