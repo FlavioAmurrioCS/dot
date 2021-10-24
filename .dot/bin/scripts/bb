@@ -142,6 +142,31 @@ function strToHash() { echo "${*}" | md5sum | tr -d 'abcdef0-' | grep -o "......
 function strToHashPort() { echo "$(($(strToHash "${*}") % 64511 + 1023))"; }
 ################################################################################
 ################################################################################
+function findUp() {
+  local startingpoint=${PWD}
+
+  while [ "${startingpoint}" != '/' ]; do
+    find "${startingpoint}" -maxdepth 1 -mindepth 1 -name "${@}" 2>/dev/null | grep -q . 2>&1 &&
+      echo "${startingpoint}" && return 0
+
+    startingpoint=$(dirname "${startingpoint}")
+  done
+
+  find "${startingpoint}" -maxdepth 1 -mindepth 1 -name "${@}" 2>/dev/null | grep -q . 2>&1 &&
+    echo "${startingpoint}" && return 0
+
+  return 1
+}
+
+function gw() {
+  local gradlew_folder
+  if gradlew_folder="$(findUp gradlew -type f)" && test -f "${gradlew_folder}/gradle/wrapper/gradle-wrapper.jar"; then
+    cd "${gradlew_folder}" &&
+      ./gradlew "${@}" && return 0
+  fi
+  return 1
+}
+
 # shellcheck disable=SC2029
 function scpWithBackUp() {
   local usage="Usage: ${FUNCNAME[0]} <local_source...> <remote_destination>"
