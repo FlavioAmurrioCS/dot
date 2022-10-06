@@ -62,7 +62,26 @@ def download_file(url, filename=None, download_path=DOWNLOAD_LOCATION):
                                  ).decode("utf-8")).strip().split(',')[0]
     if 'compressed' in file_type.lower() and tarfile.is_tarfile(abs_filepath):
         with tarfile.open(abs_filepath) as tar_file:
-            tar_file.extractall(download_path)
+            def is_within_directory(directory, target):
+                
+                abs_directory = os.path.abspath(directory)
+                abs_target = os.path.abspath(target)
+            
+                prefix = os.path.commonprefix([abs_directory, abs_target])
+                
+                return prefix == abs_directory
+            
+            def safe_extract(tar, path=".", members=None, *, numeric_owner=False):
+            
+                for member in tar.getmembers():
+                    member_path = os.path.join(path, member.name)
+                    if not is_within_directory(path, member_path):
+                        raise Exception("Attempted Path Traversal in Tar File")
+            
+                tar.extractall(path, members, numeric_owner=numeric_owner) 
+                
+            
+            safe_extract(tar_file, download_path)
     return (abs_filepath, file_type)
 
 
