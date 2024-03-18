@@ -10,27 +10,29 @@ SUCCESS_CODE = 0
 object_hook = None
 
 
-if (sys.version_info < (3, 0)):  # noqa: C901
+if sys.version_info < (3, 0):  # noqa: C901
+
     def _byteify(data, ignore_dicts=False):
-        '''
+        """
         This is need for python2 due to PYTHONIOENCODING.
-        '''
+        """
         if isinstance(data, unicode):
-            return data.encode('utf-8')
+            return data.encode("utf-8")
         if isinstance(data, list):
             return [_byteify(item, ignore_dicts=True) for item in data]
         if isinstance(data, dict) and not ignore_dicts:
             return {
                 _byteify(key, ignore_dicts=True): _byteify(value, ignore_dicts=True)
                 for key, value in data.iteritems()
-                }
+            }
         return data
+
     object_hook = _byteify
 
 
 def load_json(filename):
     # type: (str) -> object
-    f = sys.stdin if not filename else open(filename, 'r')
+    f = sys.stdin if not filename else open(filename, "r")
     return json.load(f, object_hook=object_hook)
 
 
@@ -50,8 +52,8 @@ def parse_path(json_path):
     path = json_path.strip()
     if len(path) == 0:
         return []
-    delimeter = '][' if path[0] == '[' and path[-1] == ']' else '.'
-    return [s.strip() for s in path.strip('[]').split(delimeter) if s]
+    delimeter = "][" if path[0] == "[" and path[-1] == "]" else "."
+    return [s.strip() for s in path.strip("[]").split(delimeter) if s]
 
 
 def iterobj(obj):  # noqa: C901
@@ -69,11 +71,13 @@ def iterobj(obj):  # noqa: C901
 
 
 def parse_args(argv):
-    desc = 'This tool can pretty print json, retrieve item via json_path or search by key.'
+    desc = (
+        "This tool can pretty print json, retrieve item via json_path or search by key."
+    )
     parser = ArgumentParser(description=desc)
-    parser.add_argument('-f', '--file')
-    parser.add_argument('-p', '--json_path', default='')
-    parser.add_argument('-s', '--search_key')
+    parser.add_argument("-f", "--file")
+    parser.add_argument("-p", "--json_path", default="")
+    parser.add_argument("-s", "--search_key")
     return parser.parse_args(argv)
 
 
@@ -87,12 +91,17 @@ def main(argv=None):
     # type:(list) -> int
     args = parse_args(argv)
 
-    json_obj = load_json(args.file)         # type: object
+    json_obj = load_json(args.file)  # type: object
     json_path = parse_path(args.json_path)  # type: list
-    search_key = args.search_key            # type: str
+    search_key = args.search_key  # type: str
 
     # MAYBE?
-    if isinstance(json_obj, list) and len(json_obj) == 1 and len(json_path) and json_path != '0':
+    if (
+        isinstance(json_obj, list)
+        and len(json_obj) == 1
+        and len(json_path)
+        and json_path != "0"
+    ):
         json_obj = json_obj[0]
 
     output = json_traversal(json_obj, json_path)
@@ -100,7 +109,7 @@ def main(argv=None):
     if search_key:
         output = search_obj(output, search_key)
 
-    json.dump(output, sys.stdout, sort_keys=True, indent=4, separators=(',', ': '))
+    json.dump(output, sys.stdout, sort_keys=True, indent=4, separators=(",", ": "))
     print("")
 
 
