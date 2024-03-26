@@ -33,6 +33,8 @@
     ".conda":true,
     ".zcompdump": true,
     ".cache": true,
+    ".ruff_cache": true,
+    ".cargo": true,
   },
   "files.exclude": {
     ".CFUserTextEncoding": true,
@@ -67,6 +69,8 @@
     ".conda":true,
     ".zcompdump": true,
     ".cache": true,
+    ".ruff_cache": true,
+    ".cargo": true,
   },
   "terminal.integrated.env.osx": {
     "GIT_DIR":"${env:HOME}/.cfg/",
