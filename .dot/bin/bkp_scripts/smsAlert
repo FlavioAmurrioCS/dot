@@ -9,37 +9,39 @@ from urllib.request import Request, urlopen
 
 
 def base64Encode(txt):
-    message_bytes = txt.encode('utf-8')
-    return base64.b64encode(message_bytes).decode('utf-8')
+    message_bytes = txt.encode("utf-8")
+    return base64.b64encode(message_bytes).decode("utf-8")
 
 
-PHONE_NUMBER = os.getenv('PHONE_NUMBER')
-TWILIO_ACCOUNT_SID = os.getenv('TWILIO_ACCOUNT_SID')
-TWILIO_AUTH_TOKEN = os.getenv('TWILIO_AUTH_TOKEN')
-TWILIO_PHONE_NUMBER = os.getenv('TWILIO_PHONE_NUMBER')
+PHONE_NUMBER = os.getenv("PHONE_NUMBER")
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
-assert TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER and PHONE_NUMBER, \
-    'MUST DEFINE ENVIROMENTAL VARIABLES!'
+assert (
+    TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN and TWILIO_PHONE_NUMBER and PHONE_NUMBER
+), "MUST DEFINE ENVIROMENTAL VARIABLES!"
 
 
 def send_sms(phone_number, msg):
-    TWILIO_BASIC_AUTH = f'Basic {base64Encode(TWILIO_ACCOUNT_SID + ":" + TWILIO_AUTH_TOKEN)}'
-    TWILIO_URL = f'https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json'
+    TWILIO_BASIC_AUTH = (
+        f'Basic {base64Encode(TWILIO_ACCOUNT_SID + ":" + TWILIO_AUTH_TOKEN)}'
+    )
+    TWILIO_URL = (
+        f"https://api.twilio.com/2010-04-01/Accounts/{TWILIO_ACCOUNT_SID}/Messages.json"
+    )
 
-    data = {
-        'To': phone_number,
-        'From': TWILIO_PHONE_NUMBER,
-        'Body': msg
-    }
-    data = urlencode(data).encode('utf-8')
+    data = {"To": phone_number, "From": TWILIO_PHONE_NUMBER, "Body": msg}
+    data = urlencode(data).encode("utf-8")
 
     headers = {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Authorization': TWILIO_BASIC_AUTH
-        }
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Authorization": TWILIO_BASIC_AUTH,
+    }
     req = Request(TWILIO_URL, headers=headers)
     response = urlopen(req, data)
     return response
+
 
 # def send_sms(self, phone_number, msg):
 #     phone_number = phone_number if \
@@ -78,18 +80,18 @@ def current_time_est():
                 return datetime.timedelta(0)
 
         def tzname(self, dt):
-            return 'EST5EDT'
+            return "EST5EDT"
 
     return datetime.datetime.now(tz=EST5EDT()).ctime()
 
 
 def main():
-    msg = ' '.join(sys.argv[1:]).strip()
+    msg = " ".join(sys.argv[1:]).strip()
     if not msg:
-        print('Message is empty!')
-        msg = 'Task is done!'
+        print("Message is empty!")
+        msg = "Task is done!"
     send_sms(PHONE_NUMBER, msg)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

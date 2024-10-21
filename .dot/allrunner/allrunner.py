@@ -14,7 +14,6 @@ from subprocess import call, run
 from typing import NamedTuple
 from urllib.request import urlopen
 
-import tarfile
 
 ################################################################################
 
@@ -35,20 +34,20 @@ def ensure_dir(path):
 def download_file(url, filename=None, overwrite=True):
     response = urlopen(url)
     if not filename:
-        _, params = cgi.parse_header(response.headers.get('Content-Disposition', ''))
-        filename = params.get('filename', url.split('/')[-1].split('?')[0])
+        _, params = cgi.parse_header(response.headers.get("Content-Disposition", ""))
+        filename = params.get("filename", url.split("/")[-1].split("?")[0])
     ensure_dir(dirname(abspath(filename)))
     if not os.path.isfile(filename):
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             f.write(response.read())
     return filename
 
 
 class Logger:
-    _INFO = '\033[1;37m'
-    _ERROR = '\033[1;31m'
-    _SUCCESS = '\033[1;32m'
-    _WARNING = '\033[1;33m'
+    _INFO = "\033[1;37m"
+    _ERROR = "\033[1;31m"
+    _SUCCESS = "\033[1;32m"
+    _WARNING = "\033[1;33m"
 
     def _color_log(self, color, msg):
         print(color + msg, file=sys.stderr)
@@ -65,21 +64,23 @@ class Logger:
     def warn(self, msg):
         self._color_log(self._WARNING, msg)
 
+
 ################################################################################
 
 
 class Config:
     """Base config."""
-    USER_HOME = os.getenv('HOME')
-    PROJECTS_HOME = os.path.join(USER_HOME, 'projects')
-    CODING_STANDARDS_HOME = os.path.join(PROJECTS_HOME, 'coding-standards')
-    ANALYZERS_HOME = '/tmp/analyzers'
-    CHECKSTYLE_DOWNLOAD_LINK = 'BLANK/checkstyle/checkstyle-8.39-all.jar'
-    FINDBUGS_DOWNLOAD_LINK = 'BLANK/ie-devtools/findbugs-3.0.1.tar.gz'
+
+    USER_HOME = os.getenv("HOME")
+    PROJECTS_HOME = os.path.join(USER_HOME, "projects")
+    CODING_STANDARDS_HOME = os.path.join(PROJECTS_HOME, "coding-standards")
+    ANALYZERS_HOME = "/tmp/analyzers"
+    CHECKSTYLE_DOWNLOAD_LINK = "BLANK/checkstyle/checkstyle-8.39-all.jar"
+    FINDBUGS_DOWNLOAD_LINK = "BLANK/ie-devtools/findbugs-3.0.1.tar.gz"
 
 
 @dataclass
-class Git():
+class Git:
     git_url: str
     project_path: str
 
@@ -92,21 +93,21 @@ class Git():
 
     def clone(self):
         if not isdir(self.project_path):
-            cmd = ['bash', '-c', f'git clone {self.git_url} {self.project_path}']
+            cmd = ["bash", "-c", f"git clone {self.git_url} {self.project_path}"]
             a = run(cmd, capture_output=True)
             print(a)
 
 
 class StaticAnalyzerError(NamedTuple):
-    filename: str = ''
-    message: str = ''
-    line: str = ''
-    column: str = '0'
-    severity: str = 'low'
-    source: str = ''
+    filename: str = ""
+    message: str = ""
+    line: str = ""
+    column: str = "0"
+    severity: str = "low"
+    source: str = ""
 
     def __repr__(self):
-        return f'{self.filename}:{self.line} {self.message}'
+        return f"{self.filename}:{self.line} {self.message}"
 
 
 class StaticAnalyzer(ABC):
@@ -121,32 +122,37 @@ class StaticAnalyzer(ABC):
 
 class Checkstyle(StaticAnalyzer):
     def __init__(self):
-        self.coding_standards_git = Git('git@github.com')
-        self.coding_standards_java = os.path.join(self.coding_standards_git.project_path, 'java')
+        self.coding_standards_git = Git("git@github.com")
+        self.coding_standards_java = os.path.join(
+            self.coding_standards_git.project_path, "java"
+        )
         self.downloadlink = Config.CHECKSTYLE_DOWNLOAD_LINK
-        self.jar_location = os.path.join(Config.ANALYZERS_HOME, 'checkstyle.jar')
-        header_txt = os.path.join(self.coding_standards_java, 'header.txt')
-        suppressions_xml = os.path.join(self.coding_standards_java, 'suppressions.xml')
-        checkstyle_xml = os.path.join(self.coding_standards_java, 'checkstyle.xml')
+        self.jar_location = os.path.join(Config.ANALYZERS_HOME, "checkstyle.jar")
+        header_txt = os.path.join(self.coding_standards_java, "header.txt")
+        suppressions_xml = os.path.join(self.coding_standards_java, "suppressions.xml")
+        checkstyle_xml = os.path.join(self.coding_standards_java, "checkstyle.xml")
         self.cmd = [
-            'java',
-            f'-Dcheckstyle.header.file={header_txt}',
-            f'-Dcheckstyle.suppression.file={suppressions_xml}',
-            '-jar', self.jar_location,
-            '-f', 'xml',
-            '-c', checkstyle_xml,
-            ]
+            "java",
+            f"-Dcheckstyle.header.file={header_txt}",
+            f"-Dcheckstyle.suppression.file={suppressions_xml}",
+            "-jar",
+            self.jar_location,
+            "-f",
+            "xml",
+            "-c",
+            checkstyle_xml,
+        ]
 
     def analyze(self, files):
         with touch_tmp_file() as filename:
-            cmd_arr = self.cmd + ['-o', filename] + files
+            cmd_arr = self.cmd + ["-o", filename] + files
             call(cmd_arr)
 
             tree = ET.parse(filename)
             root = tree.getroot()
             ret = []
             for file_elem in root.getchildren():
-                filename = file_elem.attrib['name']
+                filename = file_elem.attrib["name"]
                 for error_elem in file_elem.getchildren():
                     ret.append(StaticAnalyzerError(filename, **error_elem.attrib))
             return ret
@@ -161,13 +167,11 @@ class FindBugs(StaticAnalyzer):
     def __init__(self):
         self.downloadlink = Config.FINDBUGS_DOWNLOAD_LINK
 
-
     def setup(self):
         return super().setup()
 
     def analyze(self, files):
         return super().analyze(files)
-
 
 
 class ProjectAnalyzer:
@@ -177,13 +181,15 @@ class ProjectAnalyzer:
 
     @staticmethod
     def git_diff_name_only(branch=None):
-        project_dir = '/Users/famurriomoya/projects/dotgov-tomcat'
+        project_dir = "/Users/famurriomoya/projects/dotgov-tomcat"
         cmd_arr = [
-            'git',
-            f'--git-dir={project_dir}/.git',
-            f'--work-tree={project_dir}',
-            'diff', branch, '--name-only'
-            ]
+            "git",
+            f"--git-dir={project_dir}/.git",
+            f"--work-tree={project_dir}",
+            "diff",
+            branch,
+            "--name-only",
+        ]
         if not branch:
             del cmd_arr[4]
         output = run(cmd_arr, capture_output=True).stdout.decode("utf-8")
@@ -202,7 +208,7 @@ class ProjectAnalyzer:
 
 
 def main():
-    runner = ProjectAnalyzer(Checkstyle(), branch='master')
+    runner = ProjectAnalyzer(Checkstyle(), branch="master")
     runner.setup()
     static_analyzer_errors = runner.analyze()
     for foo in static_analyzer_errors:
