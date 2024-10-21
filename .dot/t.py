@@ -44,12 +44,10 @@ class CommandBase(ABC):
         self._configure_parser(command_parser)
 
     @abstractmethod
-    def _configure_parser(self, parser: ArgumentParser) -> None:
-        ...
+    def _configure_parser(self, parser: ArgumentParser) -> None: ...
 
     @abstractmethod
-    def do(self, *args, **kwargs) -> CompletedCommand[Any]:
-        ...
+    def do(self, *args, **kwargs) -> CompletedCommand[Any]: ...
 
     def __execute__(self, args: Namespace) -> int:
         completedCommand = None

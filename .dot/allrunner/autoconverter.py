@@ -6,13 +6,16 @@ from contextlib import suppress
 
 def auto_convert_args(func):
     """
-    This is a decorator which will auto convert arguments based on functions's typing annotation."""
+    This is a decorator which will auto convert arguments based on functions's typing annotation.
+    """
 
     fullArgSpec = getfullargspec(func)
 
-    var_names = (fullArgSpec.args[1:]  # if first var_name is named _cls, then we must omit it
-                 if fullArgSpec.args and fullArgSpec.args[0] == '_cls'
-                 else fullArgSpec.args)
+    var_names = (
+        fullArgSpec.args[1:]  # if first var_name is named _cls, then we must omit it
+        if fullArgSpec.args and fullArgSpec.args[0] == "_cls"
+        else fullArgSpec.args
+    )
 
     spec_annotations = fullArgSpec.annotations  # annotation identified by inspect
     defaults = fullArgSpec.defaults or ()  # tuple of the kwargs values
@@ -31,10 +34,22 @@ def auto_convert_args(func):
         """
         if type(type_class) == type(int):  # checking if type_class is a primitive
             return value if isinstance(value, type_class) else type_class(value)
-        elif hasattr(type_class, '__origin__'):  # checking if type_class is a wrapper over a primitive
-            return value if isinstance(value, type_class.__origin__) else type_class.__origin__(value)
-        elif hasattr(type_class, '__constraints__'):  # checking if type_class is an Union
-            return value if isinstance(value, type_class.__constraints__) else type_class.__constraints__[-1](value)
+        elif hasattr(
+            type_class, "__origin__"
+        ):  # checking if type_class is a wrapper over a primitive
+            return (
+                value
+                if isinstance(value, type_class.__origin__)
+                else type_class.__origin__(value)
+            )
+        elif hasattr(
+            type_class, "__constraints__"
+        ):  # checking if type_class is an Union
+            return (
+                value
+                if isinstance(value, type_class.__constraints__)
+                else type_class.__constraints__[-1](value)
+            )
         return value
 
     @wraps(func)
@@ -48,14 +63,17 @@ def auto_convert_args(func):
                 with suppress(BaseException):  # If conversion fails, just ignore it.
                     c_kwargs[var_name] = convert_value(value, annotations[var_name])
         return func(**c_kwargs)
+
     return wrapped
+
 
 def print_dict_type_table(dct):
     print(f"{'var_name':>12} | {'val_type':15} | value")
-    print('-' * 60)
+    print("-" * 60)
     for var_name, value in dct.items():
         val_type = str(type(value))
         print(f"{var_name:>12} | {val_type:15} | {value!r}")
+
 
 @auto_convert_args
 def example(timeout: str, time: list, sleep: int, boo: str, baz=2, foo=3):
@@ -63,7 +81,7 @@ def example(timeout: str, time: list, sleep: int, boo: str, baz=2, foo=3):
     print_dict_type_table(args)
 
 
-example(1, '23', "3", '4', baz='34', foo=212)
+example(1, "23", "3", "4", baz="34", foo=212)
 #     var_name | val_type        | value
 # ------------------------------------------------------------
 #      timeout | <class 'str'>   | '1'
@@ -73,8 +91,9 @@ example(1, '23', "3", '4', baz='34', foo=212)
 #          baz | <class 'int'>   | 34
 #          foo | <class 'int'>   | 212
 print()
-print('=' * 100)
+print("=" * 100)
 print()
+
 
 class AppInfo(NamedTuple):
     application: str
@@ -88,8 +107,17 @@ class AppInfo(NamedTuple):
     args: str
 
 
-app_data = ("com.foo,bar", "S", "1657", "1", "READY",
-            "PERMANENT", "0", "supervisor.scope", "<none>")
+app_data = (
+    "com.foo,bar",
+    "S",
+    "1657",
+    "1",
+    "READY",
+    "PERMANENT",
+    "0",
+    "supervisor.scope",
+    "<none>",
+)
 
 # Here we can use the @auto_convert_args to wrap the constructor for AppInfo
 app_info: AppInfo = auto_convert_args(AppInfo)(*app_data)
