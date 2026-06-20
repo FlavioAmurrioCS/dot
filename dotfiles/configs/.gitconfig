@@ -1,0 +1,61 @@
+###################################################################################################
+#######################################     .gitconfig     ########################################
+###################################################################################################
+[core]
+  # editor = code --wait
+  excludesfile = ~/.gitignore
+  ignorecase = true
+  attributesfile = ~/.gitattributes
+[alias]
+  l = log --relative-date --decorate --graph --abbrev-commit
+  ll = log --relative-date --decorate --all --graph --abbrev-commit
+  tree = log --graph --decorate --pretty=oneline --abbrev-commit
+[pager]
+  branch = false
+# [merge]
+#   tool = vscode
+# [mergetool "vscode"]
+#   cmd = code --wait $MERGED
+[diff]
+  tool = vscode
+[difftool "vscode"]
+  cmd = code --wait --diff $LOCAL $REMOTE
+[color]
+  ui = auto
+[color "branch"]
+  current = yellow reverse
+  local = yellow
+  remote = green
+[color "diff"]
+  meta = yellow bold
+  frag = magenta bold
+  old = red bold
+  new = green bold
+[color "status"]
+  added = yellow
+  changed = green
+  untracked = cyan
+[filter "lfs"]
+  clean = git-lfs clean -- %f
+  smudge = git-lfs smudge -- %f
+  process = git-lfs filter-process
+  required = true
+[push]
+  default = simple
+[status]
+  # showUntrackedFiles = no
+# Had to comment out the following to use spotless's year fetcher
+# [format]
+#   pretty = format:%C(yellow)%h %Cblue%>(12)%ad %Cgreen%<(7)%aN%Cred%d %Creset%s
+[diff "ansible-vault"]
+  textconv = ansible-vault view
+  cachetextconv = true
+# [init]
+#   templatedir = ~/.dot/git_template
+[pull]
+  rebase = false
+# git pull --rebase, --no-rebase, or --ff-only
+# NOTE: To override settings in this file such as the user, add a
+# ~/.gitconfig.local file with your extra settings
+[include]
+  path = ~/.gitconfig.local
