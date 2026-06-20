@@ -55,11 +55,11 @@ done < <(grep -E '^[^ ]+\(\) {' "${__DEV_SH_SCRIPT__}" | cut -d' ' -f1 | cut -d'
 
 case "${RUNNING_OS:="$(uname -s)"}" in
 Darwin)
-  export APPLICATION_DIR="${HOME}/Applications"
-  export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
-  export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
-  export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
-  export PATH="${HOMEBREW_HOME}/bin:${PATH}"
+  # export APPLICATION_DIR="${HOME}/Applications"
+  # export HOMEBREW_HOME="${APPLICATION_DIR}/brew"
+  # export HOMEBREW_PREFIX="${HOMEBREW_HOME}"
+  # export HOMEBREW_CASK_OPTS="--appdir=${APPLICATION_DIR}"
+  # export PATH="${HOMEBREW_HOME}/bin:${PATH}"
   ;;
 Linux)
   : Do nothing
@@ -69,16 +69,17 @@ Linux)
   ;;
 esac
 
-export TOOL_INSTALLER_OPT_DIR="${TOOL_INSTALLER_OPT_DIR:-${HOME}/opt/runtool}"
-export TOOL_INSTALLER_BIN_DIR="${TOOL_INSTALLER_BIN_DIR:-${TOOL_INSTALLER_OPT_DIR}/bin}"
-export TOOL_INSTALLER_PIPX_HOME="${TOOL_INSTALLER_PIPX_HOME:-${TOOL_INSTALLER_OPT_DIR}/pipx_home}"
-export TOOL_INSTALLER_PACKAGE_DIR="${TOOL_INSTALLER_PACKAGE_DIR:-${TOOL_INSTALLER_OPT_DIR}/packages}"
-export TOOL_INSTALLER_GIT_PROJECT_DIR="${TOOL_INSTALLER_GIT_PROJECT_DIR:-${TOOL_INSTALLER_OPT_DIR}/git_projects}"
-export PIPX_BIN_DIR="${PIPX_BIN_DIR:-${TOOL_INSTALLER_BIN_DIR}}"
-export PIPX_HOME="${PIPX_HOME:-${TOOL_INSTALLER_PIPX_HOME}}"
-export PATH="${TOOL_INSTALLER_BIN_DIR}:${HOME}/.local/bin:${PATH}"
-export HATCH_ENV_TYPE_VIRTUAL_PATH="venv"
-export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --exact"
+# export TOOL_INSTALLER_OPT_DIR="${TOOL_INSTALLER_OPT_DIR:-${HOME}/opt/runtool}"
+# export TOOL_INSTALLER_BIN_DIR="${TOOL_INSTALLER_BIN_DIR:-${TOOL_INSTALLER_OPT_DIR}/bin}"
+# export TOOL_INSTALLER_PIPX_HOME="${TOOL_INSTALLER_PIPX_HOME:-${TOOL_INSTALLER_OPT_DIR}/pipx_home}"
+# export TOOL_INSTALLER_PACKAGE_DIR="${TOOL_INSTALLER_PACKAGE_DIR:-${TOOL_INSTALLER_OPT_DIR}/packages}"
+# export TOOL_INSTALLER_GIT_PROJECT_DIR="${TOOL_INSTALLER_GIT_PROJECT_DIR:-${TOOL_INSTALLER_OPT_DIR}/git_projects}"
+# export PIPX_BIN_DIR="${PIPX_BIN_DIR:-${TOOL_INSTALLER_BIN_DIR}}"
+# export PIPX_HOME="${PIPX_HOME:-${TOOL_INSTALLER_PIPX_HOME}}"
+export PATH="${HOME}/.local/bin:${PATH}"
+# export PATH="${TOOL_INSTALLER_BIN_DIR}:${HOME}/.local/bin:${PATH}"
+# export HATCH_ENV_TYPE_VIRTUAL_PATH="venv"
+# export FZF_DEFAULT_OPTS="--height 40% --layout=reverse --border --exact"
 
 ###############################################################################
 # endregion: SCRIPT SETUP DO NOT EDIT
@@ -218,6 +219,21 @@ if [ "${__DEV_SH_IS_SOURCED__}" = 'true' ]; then
   ###############################################################################
   # region: FUNCTIONS THAT SHOULD ONLY BE AVAILABLE WHEN FILE IS BEING SOURCED
   ###############################################################################
+  enable_autocomplete() {
+    command -v "${1}" > /dev/null 2>&1 || return 1
+    _filename="${*}.sh"
+    _filename="/tmp/${_filename}"
+    if [ ! -s "${_filename}" ]; then
+        "${@}" > "/tmp/temp.sh" || return 1
+        mv "/tmp/temp.sh" "${_filename}"
+    fi
+    # shellcheck disable=SC1090
+    . "${_filename}"
+  }
+
+  enable_autocomplete mise activate "${__DEV_SH_CURRENT_SHELL__}" --shims
+  enable_autocomplete mise activate "${__DEV_SH_CURRENT_SHELL__}"
+
   ,cd() {
     __selected="$(_select_project)"
     [ -n "${__selected}" ] && cd "${__selected}" && return 0
@@ -358,7 +374,7 @@ if [ "${__DEV_SH_IS_SOURCED__}" = 'true' ]; then
       __PS1_GREEN __PS1_YELLOW __PS1_BLUE __PS1_MAGENTA __PS1_CYAN __PS1_WHITE \
       __PS1_USERNAME __PS1_AT __PS1_HOSTNAME __PS1_WORKSPACE __PS1_PROMPT \
       __PS1_WRAPPER_START __PS1_WRAPPER_END __PS1_GIT __TPUT_RESET __PS1_BOLD __PS1_RESET
-    eval "$(fzf --bash)"
+    enable_autocomplete fzf "--${__DEV_SH_CURRENT_SHELL__}"
     ;;
   zsh)
     autoload -U colors && colors
@@ -367,7 +383,7 @@ if [ "${__DEV_SH_IS_SOURCED__}" = 'true' ]; then
     # shellcheck disable=SC1087
     # shellcheck disable=SC2154
     PS1="%B%{$fg[red]%}[%{$fg[yellow]%}%n%{$fg[green]%}@%{$fg[blue]%}%M %{$fg[magenta]%}%~%{$fg[red]%}]%{$reset_color%}$%b "
-    eval "$(fzf --zsh)"
+    enable_autocomplete fzf "--${__DEV_SH_CURRENT_SHELL__}"
     ;;
   *)
     PS1="dev.sh: ${__DEV_SH_CURRENT_SHELL__} not supported"

@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/env sh
 # shellcheck disable=SC1090
 echo 'sourcing ~/.bash_profile' >&2
 __DEV_SH_CURRENT_SHELL__=bash
