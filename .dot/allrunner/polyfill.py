@@ -22,7 +22,7 @@ def suppress(error=Exception):
         pass
 
 
-class ABC():
+class ABC:
     __metaclass__ = _abc.ABCMeta
 
 
@@ -42,19 +42,19 @@ def touch_tmp_file():
 def download_file(url, filename=None, overwrite=True):
     response = _urlopen(url)
     if not filename:
-        _, params = _cgi.parse_header(response.headers.get('Content-Disposition', ''))
-        filename = params.get('filename', url.split('/')[-1].split('?')[0])
+        _, params = _cgi.parse_header(response.headers.get("Content-Disposition", ""))
+        filename = params.get("filename", url.split("/")[-1].split("?")[0])
     if not _isfile(filename):
-        with open(filename, 'wb') as f:
+        with open(filename, "wb") as f:
             f.write(response.read())
     return filename
 
 
 class Logger:
-    _INFO = '\033[1;37m'
-    _ERROR = '\033[1;31m'
-    _SUCCESS = '\033[1;32m'
-    _WARNING = '\033[1;33m'
+    _INFO = "\033[1;37m"
+    _ERROR = "\033[1;31m"
+    _SUCCESS = "\033[1;32m"
+    _WARNING = "\033[1;33m"
 
     def _color_log(self, color, msg):
         print(color + msg, file=_sys.stderr)
